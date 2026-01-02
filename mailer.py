@@ -4,8 +4,8 @@ import os
 from datetime import datetime
 
 # Prepare stats for email
-to_list = ["juneth.viktor@ftdichip.com."]  # replace with actual recipients
-#to_list = ["ftdi_prodtest@ftdichip.com."]  # replace with actual recipients
+to_list = ["juneth.viktor@ftdichip.com"]  # replace with actual recipients
+#to_list = ["ftdi_prodtest@ftdichip.com"]  # replace with actual recipients
 #cc_list = ["manager@example.com"]  # optional
 #attachments = []  # optional, add file paths if needed
 
@@ -53,3 +53,13 @@ This is an automated message.
 
     mail.Send()
     print("[MAIL] Outlook notification sent")
+
+send_completion_mail(
+    product="dasdas",
+    total_wafers="23",
+    uploaded_wafers="12",
+    ftp_dir="12312",
+    to_list=to_list,
+    #cc_list=cc_list,
+    #attachments=attachments
+)

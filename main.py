@@ -185,20 +185,21 @@ else:
                             wafer=wafer,
                             stage=stage
                         )
-                        uploaded_wafers +=uploaded_wafers
-                        if not success:
-                            continue
+                        if success:
+                            uploaded_wafers += 1
+                        else:
+                            print(f"[WARN] Failed to insert/update DB for {lot} W{wafer} {stage}")
 
         except zipfile.BadZipFile:
             print("Bad ZIP file, skipping:", zip_path)
 
-        # Send notification
-        send_completion_mail(
-            product=PRODUCT_TO_CHECK,
-            total_wafers={not_uploaded_count},
-            uploaded_wafers=uploaded_wafers,
-            ftp_dir=FTP_BASE_URL,
-            to_list=to_list,
-            #cc_list=cc_list,
-            #attachments=attachments
-        )
+# Send notification
+send_completion_mail(
+    product=PRODUCT_TO_CHECK,
+    total_wafers=not_uploaded_count,
+    uploaded_wafers=uploaded_wafers,
+    ftp_dir=FTP_BASE_URL,
+    to_list=to_list,
+    #cc_list=cc_list,
+    #attachments=attachments
+)
