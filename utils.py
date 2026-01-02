@@ -21,22 +21,6 @@ def progress(total, current):
         sys.stdout.write(f"\r[{bar:<100}] {pct}%")
         sys.stdout.flush()
 
-# -------------------------
-# Database session handling
-# -------------------------
-# Create ONE engine for the entire application
-_engine = create_engine(DB_URI, pool_pre_ping=True)
-
-# Session factory
-_SessionFactory = sessionmaker(bind=_engine)
-
-def create_session():
-    """
-    Returns a new SQLAlchemy session.
-    Engine and session factory are shared globally.
-    """
-    return _SessionFactory()
-
 def format_zip_timestamp(ts: str) -> str:
     """
     Convert 'YYYY-MM-DD HH:MM:SS' -> 'YYYY/MM/DD HH:MM:SS'

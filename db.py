@@ -1,7 +1,7 @@
 # db.py
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-
+from datetime import datetime
 from configs import DB_URI, DB_UPLOAD_TABLE
 
 # -------------------------
@@ -10,6 +10,15 @@ from configs import DB_URI, DB_UPLOAD_TABLE
 _engine = sqlalchemy.create_engine(DB_URI, pool_pre_ping=True)
 
 _SessionFactory = sessionmaker(bind=_engine)
+
+
+def create_session():
+    """
+    Returns a new SQLAlchemy session.
+    Engine and session factory are shared globally.
+    """
+    return _SessionFactory()
+
 
 def open_upload_session():
     """
@@ -34,3 +43,43 @@ def open_upload_session():
     )
 
     return session, upload_table
+
+def upsert_upload(session, upload_table, product, lot, wafer, stage, status="uploaded", agent="gtk_to_umc"):
+    """
+    Insert or update a row in the upload_table.
+    Uses PC-local timestamp for created_at if inserting.
+    """
+    try:
+        record = session.query(upload_table).filter(
+            upload_table.c.Product == product,
+            upload_table.c.Lot_Number.like(f"{lot}%"),
+            upload_table.c.Wafer_Id == wafer,
+            upload_table.c.stage == stage
+        ).first()
+
+        if record:
+            # UPDATE existing row
+            record.status = status
+            record.upload_agent = agent
+            print(f"[DB] Updated: Lot={lot}, Wafer={wafer}, Stage={stage}")
+        else:
+            # INSERT new row
+            ins = upload_table.insert().values(
+                Product=product,
+                Lot_Number=lot,
+                Wafer_Id=wafer,
+                stage=stage,
+                status=status,
+                upload_agent=agent,
+                created_at=datetime.now().astimezone()  # PC-local timezone
+            )
+            session.execute(ins)
+            print(f"[DB] Inserted: Lot={lot}, Wafer={wafer}, Stage={stage}")
+
+        session.commit()
+        return True
+
+    except Exception as e:
+        session.rollback()
+        print(f"[ERROR] DB UPSERT failed for Lot={lot}, Wafer={wafer}, Stage={stage}: {e}")
+        return False

@@ -3,29 +3,12 @@ import os
 import shutil
 import zipfile
 from datetime import datetime
-from configs import PRODUCT_TO_CHECK, NAS_MAP_DIR, TEMP_DL_DIR, ROOT_DIR, FTP_USERPWD, FTP_BASE_URL
-from db import open_upload_session
+from configs import PRODUCT_TO_CHECK, NAS_MAP_DIR, TEMP_DL_DIR, ROOT_DIR, FTP_BASE_URL
+from db import open_upload_session, upsert_upload
 from scanner import scan_maps
 from umc_writer import process_wafer
-from ftp_client import FTPClient
-import socket
-from ftplib import FTP
-import pycurl
-from ftp_client import download_with_retry, upload_with_retry
-from utils import sha256_file
-
-
-MAX_FTP_RETRIES = 3
-
-
-# Setup FTP client once
-c = pycurl.Curl()
-c.setopt(pycurl.USERPWD, FTP_USERPWD)
-c.setopt(pycurl.VERBOSE, 0)
-
-d = pycurl.Curl()
-d.setopt(pycurl.USERPWD, FTP_USERPWD)
-d.setopt(pycurl.VERBOSE, 0)
+from ftp_client import upload_and_verify, MAX_FTP_RETRIES, c, d
+from mailer import send_completion_mail, to_list
 
 
 # -------------------------
@@ -95,6 +78,7 @@ for zip_file in os.listdir(NAS_MAP_DIR):
 
             record = session.query(upload_table).filter(
                 upload_table.c.Lot_Number.like(f"{lot_prefix}%"),
+                upload_table.c.Wafer_Id == int(wafer),
                 upload_table.c.stage == stage
             ).first()
 
@@ -140,7 +124,7 @@ else:
     # Step 3: Process all ZIPs in TEMP_DL_DIR
     # ------------------------
     print(f"\nProcessing {len(not_uploaded_zips)} NOT_UPLOADED ZIPs in TEMP_DL_DIR...")
-
+    uploaded_wafers = 0
     for zip_file in os.listdir(TEMP_DL_DIR):
         if not zip_file.lower().endswith(".zip"):
             continue
@@ -186,76 +170,35 @@ else:
                         remote_url = f"{FTP_BASE_URL}/{umc_basename}"
                         local_dl_verify = os.path.join(TEMP_DL_DIR, f"verify_{umc_basename}")
 
-                        uploaded = upload_with_retry(
-                            curl=c,
-                            local_file=umc_file,
-                            remote_url=remote_url,
-                            retries=MAX_FTP_RETRIES
-                        )
-
-                        if not uploaded:
-                            print(f"[FAIL] Upload failed for {umc_basename}, skipping DB update")
+                        if not upload_and_verify(c, d, umc_file, FTP_BASE_URL, TEMP_DL_DIR, MAX_FTP_RETRIES):
                             continue
-
-                        downloaded = download_with_retry(
-                            curl=d,
-                            remote_url=remote_url,
-                            local_file=local_dl_verify,
-                            retries=MAX_FTP_RETRIES
-                        )
-
-                        if not downloaded:
-                            print(f"[FAIL] Download-back failed for {umc_basename}, skipping DB update")
-                            continue
-
-                        if sha256_file(umc_file) != sha256_file(local_dl_verify):
-                            print(f"[FAIL] File mismatch after upload: {umc_basename}")
-                            continue
-
-                        print(f"[OK] FTP verified: {umc_basename}")
-
-                        os.remove(local_dl_verify)
-
-
 
                         # ------------------------
                         # Update DB immediately
                         # ------------------------
 
-                        try:
-                            record = session.query(upload_table).filter(
-                                upload_table.c.Product == PRODUCT_TO_CHECK,
-                                upload_table.c.Lot_Number.like(f"{lot}%"),
-                                upload_table.c.Wafer_Id == wafer,
-                                upload_table.c.stage == stage
-                            ).first()
-
-                            if record:
-                                # UPDATE existing row
-                                record.status = "uploaded"
-                                record.upload_agent = "gtk_to_umc"
-                                print(f"[DB] Updated: Lot={lot}, Wafer={wafer}, Stage={stage}")
-
-                            else:
-                                # INSERT new row
-                                ins = upload_table.insert().values(
-                                    Product=PRODUCT_TO_CHECK,
-                                    Lot_Number=lot,
-                                    Wafer_Id=wafer,
-                                    stage=stage,
-                                    status="uploaded",
-                                    upload_agent="gtk_to_umc"
-                                )
-                                session.execute(ins)
-                                print(f"[DB] Inserted: Lot={lot}, Wafer={wafer}, Stage={stage}")
-
-                            session.commit()
-
-                        except Exception as e:
-                            session.rollback()
-                            print(f"[ERROR] DB UPSERT failed for {umc_file}: {e}")
-
+                        success = upsert_upload(
+                            session=session,
+                            upload_table=upload_table,
+                            product=PRODUCT_TO_CHECK,
+                            lot=lot,
+                            wafer=wafer,
+                            stage=stage
+                        )
+                        uploaded_wafers +=uploaded_wafers
+                        if not success:
+                            continue
 
         except zipfile.BadZipFile:
             print("Bad ZIP file, skipping:", zip_path)
 
+        # Send notification
+        send_completion_mail(
+            product=PRODUCT_TO_CHECK,
+            total_wafers={not_uploaded_count},
+            uploaded_wafers=uploaded_wafers,
+            ftp_dir=FTP_BASE_URL,
+            to_list=to_list,
+            #cc_list=cc_list,
+            #attachments=attachments
+        )

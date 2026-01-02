@@ -2,7 +2,6 @@
 import os
 import re
 from string import Template
-from datetime import datetime
 from configs import (
     ROOT_DIR, SUBCON_MAP,
     TESTER_DICT, TEST_PROGRAM_DICT,
@@ -11,12 +10,11 @@ from configs import (
 )
 from utils import (
     mkdir,
-    create_session,
     format_zip_timestamp,
     format_zip_timestamp_for_filename
 )
 
-
+from db import create_session
 
 
 # ------------------------
@@ -51,18 +49,6 @@ umc_wafer_header_data = Template(
 "    [SOFT BIN]\n"
 "       BINNAME, DIENUM,  YIELD,MAPNAME,BINTYPE,DESCRIPTION\n"
 )
-
-
-def normalize_zip_timestamp(ts):
-    """
-    Input: 2022_03_10_17_07_12
-    Output: 2022/03/10 17:07:12
-    """
-    try:
-        dt = datetime.strptime(ts, "%Y_%m_%d_%H_%M_%S")
-        return dt.strftime("%Y/%m/%d %H:%M:%S")
-    except Exception:
-        return ""
 
 
 def extract_notch(flat):
@@ -271,7 +257,8 @@ def process_wafer(lot, wafer, filename, product, stage, zip_timestamp=None):
                 site_num="",
                 dut="",
                 dut_diff_num="",
-                map_row=last_row,
+                #map_row=last_row,
+                map_row=len(map_lines), #fixed for FT233H-B
                 map_col=trimmed_width,
                 map_bin_len="1",
                 ship=""
