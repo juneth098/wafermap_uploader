@@ -35,7 +35,7 @@ print("Scanning NAS directory:", NAS_MAP_DIR)
 
 not_uploaded_wafermaps = []
 lots = []
-total_wafer = uploaded_count = not_uploaded_count = db_update_count = uploaded_wafers = 00
+total_wafer = uploaded_count = not_uploaded_count = db_update_count = uploaded_wafers = 0
 
 
 for zip_file in os.listdir(NAS_MAP_DIR):
@@ -77,7 +77,8 @@ for zip_file in os.listdir(NAS_MAP_DIR):
                     "stage": stage,
                     "product": product
                 })
-
+            #generate csv contain products and details
+           # print(f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {nas} | {db} | {factory_report}")
             print(f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}")
 
     except zipfile.BadZipFile:
@@ -186,7 +187,7 @@ else:
         except zipfile.BadZipFile:
             print("Bad ZIP file, skipping:", zip_path)
     # ------------------------
-    # Step 6: Send Summary and Email notification
+    # Step 7: Send Summary and Email notification
     # ------------------------
     send_completion_mail(
         product=PRODUCT_TO_CHECK,

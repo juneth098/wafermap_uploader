@@ -37,20 +37,26 @@ def send_completion_mail(
 
     mail.Subject = f"GTK → UMC Upload Completed | {product}"
 
-    mail.Body = f"""
-GTK to UMC processing completed successfully.
+    mail.HTMLBody = f"""
+    <html>
+    <body style="font-family:Calibri; font-size:11pt;">
+    <h3>GTK to UMC processing completed successfully</h3>
 
-Product\t\t\t\t: {product}
-Lot ID\t\t\t\t: {", ".join(unique_lot)}
-Total wafers\t\t\t\t: {total_wafers}
-FTP: Uploaded Map\t\t\t\t: {uploaded_wafers}
-DB: Updated Rows\t\t\t\t: {db_update_count}
-FTP Directory\t\t\t\t: {ftp_dir}
-Upload Agent\t\t\t\t: gtk_to_umc
-Timestamp\t\t\t\t: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    <table cellpadding="4">
+    <tr><td><b>Product</b></td><td>:</td><td>{product}</td></tr>
+    <tr><td><b>Lot ID</b></td><td>:</td><td>{", ".join(unique_lot)}</td></tr>
+    <tr><td><b>Total wafers</b></td><td>:</td><td>{total_wafers}</td></tr>
+    <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
+    <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
+    <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
+    <tr><td><b>Upload Agent</b></td><td>:</td><td>gtk_to_umc</td></tr>
+    <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
+    </table>
 
-This is an automated message.
-"""
+    <p>This is an automated message.</p>
+    </body>
+    </html>
+    """
 
     mail.To = ";".join(to_list)
 

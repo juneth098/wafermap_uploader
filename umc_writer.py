@@ -47,7 +47,7 @@ umc_wafer_header_data = Template(
 "    SHIP           : $ship\n"
 "     \n"
 "    [SOFT BIN]\n"
-"       BINNAME, DIENUM,  YIELD,MAPNAME,BINTYPE,DESCRIPTION\n"
+"           BIN NAME, DIENUM,  YIELD, DESCRIPTION\n"
 )
 
 
