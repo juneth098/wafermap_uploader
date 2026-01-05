@@ -37,7 +37,7 @@ class FTPClient:
 
             print(f"[FTP] Uploaded {filename} to {self.remote_dir}")
         except Exception as e:
-            print(f"[ERROR] FTP upload failed for {local_file}: {e}")
+            print(f"[FTP] ERROR: FTP upload failed for {local_file}: {e}")
 
 def upload_with_retry(curl, local_file, remote_url, retries=3):
     for attempt in range(1, retries + 1):
@@ -52,7 +52,7 @@ def upload_with_retry(curl, local_file, remote_url, retries=3):
 
             return True
         except pycurl.error as e:
-            print(f"[ERROR] Upload failed (attempt {attempt}): {e}")
+            print(f"[FTP] ERROR: Upload failed (attempt {attempt}): {e}")
             time.sleep(2)
 
 def download_with_retry(curl, remote_url, local_file, retries=3):
@@ -67,7 +67,7 @@ def download_with_retry(curl, remote_url, local_file, retries=3):
 
             return True
         except pycurl.error as e:
-            print(f"[ERROR] Download failed (attempt {attempt}): {e}")
+            print(f"[FTP] ERROR: Download failed (attempt {attempt}): {e}")
             time.sleep(2)
 
     return False
@@ -83,20 +83,20 @@ def upload_and_verify(curl_upload, curl_download, local_file, ftp_base_url, temp
 
     # Upload
     if not upload_with_retry(curl=curl_upload, local_file=local_file, remote_url=remote_url, retries=max_retries):
-        print(f"[FAIL] Upload failed for {basename}, skipping DB update")
+        print(f"[FTP] Upload failed for {basename}, skipping DB update")
         return False
 
     # Download-back
     if not download_with_retry(curl=curl_download, remote_url=remote_url, local_file=local_verify, retries=max_retries):
-        print(f"[FAIL] Download-back failed for {basename}, skipping DB update")
+        print(f"[FTP] Download-back failed for {basename}, skipping DB update")
         return False
 
     # Verify hash
     if sha256_file(local_file) != sha256_file(local_verify):
-        print(f"[FAIL] File mismatch after upload: {basename}")
+        print(f"[FTP] File mismatch after upload: {basename}")
         os.remove(local_verify)
         return False
 
-    print(f"[OK] FTP verified: {basename}")
+    print(f"[FTP] FTP verified OK: {basename}")
     os.remove(local_verify)
     return True

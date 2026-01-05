@@ -33,29 +33,10 @@ os.makedirs(TEMP_DL_DIR, exist_ok=True)
 # -------------------------
 print("Scanning NAS directory:", NAS_MAP_DIR)
 
-not_uploaded_zips = []
-total_wafer = uploaded_count = not_uploaded_count = 0
+not_uploaded_wafermaps = []
+lots = []
+total_wafer = uploaded_count = not_uploaded_count = db_update_count = uploaded_wafers = 00
 
-def extract_wafer_from_filename(filename: str, lot_prefix: str):
-    """
-    filename: DKWJ301-A5.txt
-    lot_prefix: DKWJ3
-
-    returns:
-      wafer_str -> '01'
-      wafer_id  -> 1
-    """
-    name = os.path.splitext(filename)[0]   # DKWJ301-A5
-    before_dash = name.split("-")[0]        # DKWJ301
-
-    if not before_dash.startswith(lot_prefix):
-        raise ValueError(f"{filename} does not start with lot prefix {lot_prefix}")
-
-    wafer_digits = before_dash[len(lot_prefix):]  # '01'
-    wafer_id = int(wafer_digits)
-    wafer_str = f"{wafer_id:02d}"
-
-    return wafer_str, wafer_id
 
 for zip_file in os.listdir(NAS_MAP_DIR):
     if not zip_file.lower().endswith(".zip"):
@@ -63,14 +44,12 @@ for zip_file in os.listdir(NAS_MAP_DIR):
 
     zip_path = os.path.join(NAS_MAP_DIR, zip_file)
     try:
-        matched = False
         for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(NAS_MAP_DIR):
             if os.path.basename(zip_path_inner) != zip_file:
                 continue
             if product != PRODUCT_TO_CHECK:
                 continue  # skip other products
 
-            matched = True
             total_wafer += 1
 
             # Strip any ".00" suffix in lot for DB check
@@ -88,13 +67,18 @@ for zip_file in os.listdir(NAS_MAP_DIR):
             else:
                 not_uploaded_count += 1
                 status = "NOT_UPLOADED"
-                if zip_file not in not_uploaded_zips:
-                    not_uploaded_zips.append(zip_file)
+                #if zip_file not in not_uploaded_zips:
+                #    not_uploaded_zips.append(zip_file)
+                not_uploaded_wafermaps.append({
+                    "zip_file": zip_file,
+                    "txt_file": txt_file,
+                    "lot": lot_prefix,
+                    "wafer": wafer,
+                    "stage": stage,
+                    "product": product
+                })
 
             print(f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}")
-
-        if not matched:
-            continue
 
     except zipfile.BadZipFile:
         print("Bad ZIP file, skipping:", zip_path)
@@ -112,28 +96,36 @@ print(f"Not uploaded: {not_uploaded_count}")
 # ------------------------
 os.makedirs(TEMP_DL_DIR, exist_ok=True)
 
-if not not_uploaded_zips:
-    print("\nNo NOT_UPLOADED ZIPs found. Skipping copy and processing.")
+if not not_uploaded_wafermaps:
+    print("\nAll wafermaps are already UPLOADED.")
 else:
-    for zip_file in not_uploaded_zips:
-        src_zip = os.path.join(NAS_MAP_DIR, zip_file)
-        dest_zip = os.path.join(TEMP_DL_DIR, zip_file)
-        shutil.copy2(src_zip, dest_zip)
+    #only checks the zips that has not_uploaded wafermaps
+    zip_to_process = {w["zip_file"] for w in not_uploaded_wafermaps}
+
+    for zip_file in zip_to_process:
+        shutil.copy2(
+            os.path.join(NAS_MAP_DIR, zip_file),
+            os.path.join(TEMP_DL_DIR, zip_file)
+        )
 
     # ------------------------
-    # Step 3: Process all ZIPs in TEMP_DL_DIR
+    # Step 3: Copy target ZIPs in TEMP_DL_DIR
     # ------------------------
-    print(f"\nProcessing {len(not_uploaded_zips)} NOT_UPLOADED ZIPs in TEMP_DL_DIR...")
-    uploaded_wafers = 0
-    for zip_file in os.listdir(TEMP_DL_DIR):
-        if not zip_file.lower().endswith(".zip"):
-            continue
+    print(f"\nProcessing {len(zip_to_process)} ZIPs containing {len(not_uploaded_wafermaps)} NOT_UPLOADED wafermaps in {TEMP_DL_DIR}...")
+
+    for item in not_uploaded_wafermaps:
+        zip_file = item["zip_file"]
+        txt_name = os.path.basename(item["txt_file"])
+        lot = item["lot"]
+        wafer = item["wafer"]
+        stage = item["stage"]
+
 
         zip_path = os.path.join(TEMP_DL_DIR, zip_file)
 
         # Extract lot, stage, timestamp from ZIP filename
         parts = zip_file.replace(".map.zip", "").split("_")
-        lot = parts[0].split(".")[0]  # remove any .00
+        #lot = parts[0].split(".")[0]  # remove any .00
         stage = parts[1].upper() if len(parts) > 1 else "UNKNOWN"
         zip_timestamp = "_".join(parts[2:8]) if len(parts) >= 8 else None
         zip_timestamp = datetime.strptime(zip_timestamp, "%Y_%m_%d_%H_%M_%S").strftime("%Y-%m-%d %H:%M:%S") if zip_timestamp else ""
@@ -145,61 +137,65 @@ else:
                 zf.extractall(extract_dir)
 
                 for root, _, files in os.walk(extract_dir):
-                    for f in files:
-                        if not f.lower().endswith(".txt"):
-                            continue
-                        wafer_str, wafer = extract_wafer_from_filename(f, lot_prefix=lot)
+                    if txt_name not in files: # will skip upload wafermaps found in DB
+                        continue
 
-                        # ------------------------
-                        # Process wafer (generate UMC)
-                        # ------------------------
+                    txt_path = os.path.join(root, txt_name)
+                    # ------------------------
+                    # Step 4: Process wafermaps and convert into UMC Format
+                    # ------------------------
 
-                        umc_file = process_wafer(
-                            lot=lot,
-                            wafer=wafer,
-                            filename=os.path.join(root, f),
-                            product=PRODUCT_TO_CHECK,
-                            stage=stage,
-                            zip_timestamp=zip_timestamp
-                        )
+                    umc_file = process_wafer(
+                        lot=lot,
+                        wafer=wafer,
+                        filename=txt_path,
+                        product=PRODUCT_TO_CHECK,
+                        stage=stage,
+                        zip_timestamp=zip_timestamp
+                    )
+                    lots.append(lot)
+                    # ------------------------
+                    # Step 5: Upload UMC-format wafermap to FTP
+                    # ------------------------
+                    umc_basename = os.path.basename(umc_file)
+                    remote_url = f"{FTP_BASE_URL}/{umc_basename}"
+                    local_dl_verify = os.path.join(TEMP_DL_DIR, f"verify_{umc_basename}")
 
-                        # ------------------------
-                        # Upload immediately to FTP
-                        # ------------------------
-                        umc_basename = os.path.basename(umc_file)
-                        remote_url = f"{FTP_BASE_URL}/{umc_basename}"
-                        local_dl_verify = os.path.join(TEMP_DL_DIR, f"verify_{umc_basename}")
+                    if upload_and_verify(c, d, umc_file, FTP_BASE_URL, TEMP_DL_DIR, MAX_FTP_RETRIES):
+                        uploaded_wafers += 1
+                    else:
+                        continue
 
-                        if not upload_and_verify(c, d, umc_file, FTP_BASE_URL, TEMP_DL_DIR, MAX_FTP_RETRIES):
-                            continue
+                    # ------------------------
+                    # Step 6: Update DB status for every wafermap
+                    # ------------------------
 
-                        # ------------------------
-                        # Update DB immediately
-                        # ------------------------
-
-                        success = upsert_upload(
-                            session=session,
-                            upload_table=upload_table,
-                            product=PRODUCT_TO_CHECK,
-                            lot=lot,
-                            wafer=wafer,
-                            stage=stage
-                        )
-                        if success:
-                            uploaded_wafers += 1
-                        else:
-                            print(f"[WARN] Failed to insert/update DB for {lot} W{wafer} {stage}")
+                    success = upsert_upload(
+                        session=session,
+                        upload_table=upload_table,
+                        product=PRODUCT_TO_CHECK,
+                        lot=lot,
+                        wafer=wafer,
+                        stage=stage
+                    )
+                    if success:
+                        db_update_count +=1
+                    else:
+                        print(f"[WARN] Failed to insert/update DB for {lot} W{wafer} {stage}")
 
         except zipfile.BadZipFile:
             print("Bad ZIP file, skipping:", zip_path)
-
-# Send notification
-send_completion_mail(
-    product=PRODUCT_TO_CHECK,
-    total_wafers=not_uploaded_count,
-    uploaded_wafers=uploaded_wafers,
-    ftp_dir=FTP_BASE_URL,
-    to_list=to_list,
-    #cc_list=cc_list,
-    #attachments=attachments
-)
+    # ------------------------
+    # Step 6: Send Summary and Email notification
+    # ------------------------
+    send_completion_mail(
+        product=PRODUCT_TO_CHECK,
+        lots = lots,
+        total_wafers=not_uploaded_count,
+        uploaded_wafers=uploaded_wafers,
+        db_update_count= db_update_count,
+        ftp_dir=FTP_BASE_URL,
+        to_list=to_list,
+        #cc_list=cc_list,
+        #attachments=attachments
+    )

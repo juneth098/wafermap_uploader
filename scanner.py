@@ -1,11 +1,31 @@
 # scanner.py
 import os
 import zipfile
-import re
 from configs import DEVICE_TO_PRODUCT
 # -------------------------
 # Map wafer DEVICE_NAME to product
 # -------------------------
+
+def extract_wafer_from_filename(filename: str, lot_prefix: str):
+    """
+    filename: DKWJ301-A5.txt
+    lot_prefix: DKWJ3
+
+    returns:
+      wafer_str -> '01'
+      wafer_id  -> 1
+    """
+    name = os.path.splitext(filename)[0]   # DKWJ301-A5
+    before_dash = name.split("-")[0]        # DKWJ301
+
+    if not before_dash.startswith(lot_prefix):
+        raise ValueError(f"[SCANNER] {filename} does not start with lot prefix {lot_prefix}")
+
+    wafer_digits = before_dash[len(lot_prefix):]  # '01'
+    wafer_id = int(wafer_digits)
+    wafer_str = f"{wafer_id:02d}"
+
+    return wafer_str, wafer_id
 
 
 def extract_lot_from_zip(zip_name):
@@ -112,4 +132,4 @@ def scan_maps(nas_dir):
                         )
 
             except zipfile.BadZipFile:
-                print(f"Warning: Bad ZIP skipped: {zip_path}")
+                print(f"[SCANNER] Warning: Bad ZIP skipped: {zip_path}")

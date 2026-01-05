@@ -49,37 +49,26 @@ def upsert_upload(session, upload_table, product, lot, wafer, stage, status="upl
     Insert or update a row in the upload_table.
     Uses PC-local timestamp for created_at if inserting.
     """
-    try:
-        record = session.query(upload_table).filter(
-            upload_table.c.Product == product,
-            upload_table.c.Lot_Number.like(f"{lot}%"),
-            upload_table.c.Wafer_Id == wafer,
-            upload_table.c.stage == stage
-        ).first()
+    lot_prefix = lot.split(".")[0]
 
-        if record:
-            # UPDATE existing row
-            record.status = status
-            record.upload_agent = agent
-            print(f"[DB] Updated: Lot={lot}, Wafer={wafer}, Stage={stage}")
-        else:
-            # INSERT new row
-            ins = upload_table.insert().values(
+    try:
+        session.execute(
+            upload_table.insert().values(
                 Product=product,
-                Lot_Number=lot,
-                Wafer_Id=wafer,
+                Lot_Number=lot_prefix,
+                Wafer_Id=int(wafer),
                 stage=stage,
-                status=status,
-                upload_agent=agent,
-                created_at=datetime.now().astimezone()  # PC-local timezone
+                status="uploaded",
+                upload_agent="gtk_to_umc",
+                created_at=datetime.now()
             )
-            session.execute(ins)
-            print(f"[DB] Inserted: Lot={lot}, Wafer={wafer}, Stage={stage}")
+        )
+        print(f"[DB] Inserted: Lot={lot_prefix}, Wafer={wafer}, Stage={stage}")
 
         session.commit()
         return True
 
     except Exception as e:
         session.rollback()
-        print(f"[ERROR] DB UPSERT failed for Lot={lot}, Wafer={wafer}, Stage={stage}: {e}")
+        print(f"[DB] ERROR: DB UPSERT failed for Lot={lot}, Wafer={wafer}, Stage={stage}: {e}")
         return False

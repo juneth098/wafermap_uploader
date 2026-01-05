@@ -65,8 +65,8 @@ def process_wafer(lot, wafer, filename, product, stage, zip_timestamp=None):
     """
     Convert wafer map TXT into UMC format.
     """
-    print(f"Processing file: {filename}")
-    print(f"Stage: {stage}")
+    print(f"[UMC WRITER] Processing file: {filename}")
+    print(f"[UMC WRITER] Stage: {stage}")
 
     # ------------------------
     # Parse wafer TXT
