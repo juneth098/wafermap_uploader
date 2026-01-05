@@ -23,7 +23,8 @@ def send_completion_mail(
     ftp_dir,
     to_list,
     cc_list=None,
-    attachments=None
+    attachments=None,
+    error=0,
 ):
     #remove duplicates
     unique_lot = list(dict.fromkeys(lots))
@@ -35,28 +36,51 @@ def send_completion_mail(
     outlook = win32com.client.Dispatch("Outlook.Application")
     mail = outlook.CreateItem(0)  # MailItem
 
-    mail.Subject = f"GTK → UMC Upload Completed | {product}"
 
-    mail.HTMLBody = f"""
-    <html>
-    <body style="font-family:Calibri; font-size:11pt;">
-    <h3>GTK to UMC processing completed successfully</h3>
+    if error == 0:
+        mail.Subject = f"GTK → UMC Upload Completed | {product}"
+        mail.HTMLBody = f"""
+        <html>
+        <body style="font-family:Calibri; font-size:11pt;">
+        <h3>GTK to UMC processing completed successfully</h3>
+    
+        <table cellpadding="4">
+        <tr><td><b>Product</b></td><td>:</td><td>{product}</td></tr>
+        <tr><td><b>Lot ID</b></td><td>:</td><td>{", ".join(unique_lot)}</td></tr>
+        <tr><td><b>Total wafers</b></td><td>:</td><td>{total_wafers}</td></tr>
+        <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
+        <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
+        <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
+        <tr><td><b>Upload Agent</b></td><td>:</td><td>gtk_to_umc</td></tr>
+        <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
+        </table>
+    
+        <p>This is an automated message.</p>
+        </body>
+        </html>
+        """
+    else: #FAILED
+        mail.Subject = f"GTK → UMC Upload FAIL | {product}"
+        mail.HTMLBody = f"""
+        <html>
+        <body style="font-family:Calibri; font-size:11pt;">
+         <h3 style="color:red;">GTK to UMC encountered {error} error/s</h3>
 
-    <table cellpadding="4">
-    <tr><td><b>Product</b></td><td>:</td><td>{product}</td></tr>
-    <tr><td><b>Lot ID</b></td><td>:</td><td>{", ".join(unique_lot)}</td></tr>
-    <tr><td><b>Total wafers</b></td><td>:</td><td>{total_wafers}</td></tr>
-    <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
-    <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
-    <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
-    <tr><td><b>Upload Agent</b></td><td>:</td><td>gtk_to_umc</td></tr>
-    <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
-    </table>
+        <table cellpadding="4">
+        <tr><td><b>Product</b></td><td>:</td><td>{product}</td></tr>
+        <tr><td><b>Lot ID</b></td><td>:</td><td>{", ".join(unique_lot)}</td></tr>
+        <tr><td><b>Total wafers</b></td><td>:</td><td>{total_wafers}</td></tr>
+        <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
+        <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
+        <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
+        <tr><td><b>Upload Agent</b></td><td>:</td><td>gtk_to_umc</td></tr>
+        <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
+        </table>
 
-    <p>This is an automated message.</p>
-    </body>
-    </html>
-    """
+        <p>This is an automated message.</p>
+        </body>
+        </html>
+        """
 
     mail.To = ";".join(to_list)
 

@@ -6,15 +6,13 @@ from configs import (
     ROOT_DIR, SUBCON_MAP,
     TESTER_DICT, TEST_PROGRAM_DICT,
     LOAD_BOARD_DICT, PROBE_CARD_DICT,
-    DB_FACT_REPORT_TABLE, SOFT_BIN_DICT
+    SOFT_BIN_DICT
 )
 from utils import (
     mkdir,
     format_zip_timestamp,
     format_zip_timestamp_for_filename
 )
-
-from db import create_session
 
 
 # ------------------------
@@ -61,7 +59,8 @@ def extract_notch(flat):
     return m.group(1) if m else flat
 
 
-def process_wafer(lot, wafer, filename, product, stage, zip_timestamp=None):
+def process_wafer(lot, wafer, filename, product, stage, zip_timestamp=None, factory_info=None):
+
     """
     Convert wafer map TXT into UMC format.
     """
@@ -96,42 +95,16 @@ def process_wafer(lot, wafer, filename, product, stage, zip_timestamp=None):
     yield_pct = (total_pass * 100 / total_test) if total_test else 0
     probing_notch = extract_notch(txt.get("FLAT", ""))
 
-    # ------------------------
-    # Factory report lookup
-    # ------------------------
-    session = create_session()
-    from sqlalchemy import Table, MetaData
-
-    schema, table = DB_FACT_REPORT_TABLE.split(".")
-    metadata = MetaData()
-    factory = Table(
-        table,
-        metadata,
-        schema=schema,
-        autoload_with=session.bind
-    )
-
     lot_prefix = lot.split(".")[0]
 
-
     product_wildcard = product.split("-")[0]
-    row = session.query(factory).filter(
-        factory.c.Lot_No.like(f"{lot_prefix}%.%"),
-        factory.c.ID == wafer,
-        factory.c.Product.like(f"{product_wildcard}%")
-    ).one_or_none()
+    factory_info = factory_info or {}
+    machine = factory_info.get("machine", "")
+    program = factory_info.get("program", "")
+    operator = factory_info.get("operator", "")
+    #operator_class = factory_info.get("Class", "")
+    operator_id = factory_info.get("operator_id", "")
 
-    if row:
-        machine = getattr(row, "Machine", "")
-        program = getattr(row, "Program", "")
-        operator = getattr(row, "Operator", "")
-        operator_class = getattr(row, "Class", "")
-        operator_class = operator_class[:1] if machine else ""
-        operator_id = f"{operator_class}-{operator}" if operator else ""
-    else:
-        machine = ""
-        program = ""
-        operator_id = ""
 
     # ------------------------
     # Header fields
