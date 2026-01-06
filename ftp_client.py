@@ -4,6 +4,7 @@ import time
 import pycurl
 from utils import sha256_file
 from configs import FTP_USERPWD
+import sys
 
 MAX_FTP_RETRIES = 3
 
@@ -41,17 +42,20 @@ class FTPClient:
         # Upload
         if not self._upload_with_retry(local_file, remote_url, max_retries):
             print(f"[FTP] Upload failed for {basename}")
+            sys.exit(1)  # stop script immediately
             return False
 
         # Download-back for verification
         if not self._download_with_retry(remote_url, local_verify, max_retries):
             print(f"[FTP] Download-back failed for {basename}")
+            sys.exit(1)  # stop script immediately
             return False
 
         # Verify hash
         if sha256_file(local_file) != sha256_file(local_verify):
             print(f"[FTP] File mismatch after upload: {basename}")
             os.remove(local_verify)
+            sys.exit(1)  # stop script immediately
             return False
 
         print(f"[FTP] Verified OK: {basename}")

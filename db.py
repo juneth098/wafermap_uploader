@@ -4,6 +4,7 @@ from sqlalchemy import Table, MetaData, select, update, insert, and_
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from configs import DB_URI, DB_UPLOAD_TABLE, DB_FACT_REPORT_TABLE
+import sys
 
 # ============================================================
 # Engine (shared, safe pool settings)
@@ -99,7 +100,7 @@ def get_factory_info(session, lot, wafer, product):
 # REAL UPSERT for upload status table
 # ============================================================
 def upsert_upload(session, upload_table, product, lot, wafer, stage,
-                  status="uploaded", agent="gtk_to_umc"):
+                  status="uploaded", agent="wmu_v1"):
     """
     Insert or update upload status.
     Works even if created_at / updated_at columns do NOT exist.
@@ -161,4 +162,5 @@ def upsert_upload(session, upload_table, product, lot, wafer, stage,
             f"[DB] ERROR: UPSERT failed for Lot={lot_prefix}, "
             f"Wafer={wafer}, Stage={stage}: {e}"
         )
+        sys.exit(1)  # stop script immediately
         return False

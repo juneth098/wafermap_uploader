@@ -2,7 +2,7 @@
 import os
 import zipfile
 from configs import PRODUCT_CONFIG
-
+import sys
 
 DEVICE_TO_PRODUCT = PRODUCT_CONFIG["_device_to_product"]
 # -------------------------
@@ -136,3 +136,4 @@ def scan_maps(nas_dir):
 
             except zipfile.BadZipFile:
                 print(f"[SCANNER] Warning: Bad ZIP skipped: {zip_path}")
+                sys.exit(1)  # stop script immediately

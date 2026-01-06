@@ -2,6 +2,7 @@
 import os
 import shutil
 import zipfile
+import sys
 from datetime import datetime
 from sqlalchemy import select, and_
 
@@ -103,6 +104,7 @@ for zip_file in os.listdir(NAS_MAP_DIR):
     except zipfile.BadZipFile:
         error_count += 1
         print("Bad ZIP file, skipping:", zip_file)
+        sys.exit(1)  # stop script immediately
 
 # ============================================================
 # Summary
@@ -194,14 +196,17 @@ else:
                         else:
                             print(f"[WARN] Failed to insert/update DB for {lot} W{wafer} {stage}")
                             error_count += 1
+                            sys.exit(1)  # stop script immediately
                     else:
                         print(f"[WARN] FTP upload failed for wafer {wafer}, DB not updated")
                         error_count += 1
+                        sys.exit(1)  # stop script immediately
 
 
         except zipfile.BadZipFile:
             error_count += 1
             print("Bad ZIP file, skipping:", zip_file)
+            sys.exit(1)  # stop script immediately
 
 if not_uploaded_count != 0:
 
@@ -257,6 +262,7 @@ if not_uploaded_count != 0:
         except zipfile.BadZipFile:
             error_count += 1
             print("Bad ZIP file, skipping:", zip_file)
+            sys.exit(1)  # stop script immediately
 
     # ============================================================
     # Summary

@@ -3,7 +3,7 @@ import win32com.client
 import os
 from datetime import datetime
 from utils import diff_file
-
+import sys
 # Make sure it's an absolute path
 diff_file_path = os.path.join(os.getcwd(), diff_file)  # or use your TEMP_DL_DIR if
 
@@ -102,6 +102,7 @@ def send_completion_mail(
                     mail.Attachments.Add(file)
                 else:
                     print(f"[MAIL] WARNING: Attachment not found or missing: {file}")
+                    sys.exit(1)  # stop script immediately
 
     print(f"{mail.Body}")
     mail.Send()
