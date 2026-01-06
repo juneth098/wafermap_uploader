@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from configs import DB_URI, DB_UPLOAD_TABLE, DB_FACT_REPORT_TABLE
 import sys
+import configs
 
 # ============================================================
 # Engine (shared, safe pool settings)
@@ -100,7 +101,7 @@ def get_factory_info(session, lot, wafer, product):
 # REAL UPSERT for upload status table
 # ============================================================
 def upsert_upload(session, upload_table, product, lot, wafer, stage,
-                  status="uploaded", agent="wmu_v1"):
+                  status="uploaded", agent=f"wmu_v{configs.script_ver}"):
     """
     Insert or update upload status.
     Works even if created_at / updated_at columns do NOT exist.

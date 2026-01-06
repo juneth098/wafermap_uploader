@@ -5,6 +5,11 @@ import csv
 
 load_dotenv()
 
+#script details
+author = "Juneth Viktor Ellon Moreno"
+script_ver = "1"
+
+
 # -------------------------
 # CONFIG
 # -------------------------

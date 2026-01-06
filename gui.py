@@ -5,6 +5,8 @@ import subprocess
 import sys
 import os
 import threading
+import configs
+import webbrowser
 
 PRODUCT_CSV = "product_config.csv"
 LOG_FILE = "console_log.txt"
@@ -139,7 +141,7 @@ def show_log_popup():
 # GUI
 # =========================
 root = tk.Tk()
-root.title("Wafermap_Uploader")
+root.title(f"Wafermap_Uploader v{configs.script_ver}")
 root.geometry("300x350")
 
 products = load_products_from_csv()
@@ -169,6 +171,33 @@ def remove_selected():
     for i in reversed(listbox.curselection()):
         selected_products.pop(i)
         listbox.delete(i)
+
+# -------------------- About window --------------------
+def show_about():
+    try:
+        author = configs.author
+        version = configs.script_ver
+    except AttributeError:
+        author = "Unknown"
+        version = "N/A"
+    github_url = "https://github.com/juneth098/wafermap_uploader"
+    about_win = tk.Toplevel(root)
+    about_win.title("About wafermap_uploader")
+    about_win.resizable(False, False)
+    about_win.geometry("400x200")
+    info_text = (
+        f"wafermap_uploader\n"
+        f"Version: {version}\n\n"
+        f"Copyright (c) 2026 {author}\n"
+        f"All rights reserved"
+    )
+    tk.Label(about_win, text=info_text, justify="left").pack(pady=(10, 5), padx=10, anchor="w")
+    def open_github(event):
+        webbrowser.open_new(github_url)
+    link = tk.Label(about_win, text=github_url, fg="blue", cursor="hand2")
+    link.pack(pady=(5, 10), padx=10, anchor="w")
+    link.bind("<Button-1>", open_github)
+    tk.Button(about_win, text="Close", command=about_win.destroy).pack(pady=10)
 
 
 # Middle layout
@@ -209,6 +238,10 @@ run_btn = tk.Button(
 )
 run_btn.pack(pady=10)
 
+
+# -------------------- Add About Button --------------------
+about_btn = tk.Button(root, text="About", command=show_about)
+about_btn.pack(pady=5)
 
 # -------------------------
 # Status bar
