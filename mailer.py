@@ -1,9 +1,11 @@
 # mailer.py
-from enum import unique
-
 import win32com.client
 import os
 from datetime import datetime
+from utils import diff_file
+
+# Make sure it's an absolute path
+diff_file_path = os.path.join(os.getcwd(), diff_file)  # or use your TEMP_DL_DIR if
 
 # Prepare stats for email
 to_list=[]
@@ -11,7 +13,7 @@ to_list.append("juneth.viktor@ftdichip.com")  # For test environment
 #to_list.append("alamuri.venkateswararao@ftdichip.com")  # For test environment
 #to_list.append("ftdi_prodtest@ftdichip.com")  # replace with actual recipients
 #cc_list = ["manager@example.com"]  # optional
-#attachments = []  # optional, add file paths if needed
+attachments = []  # optional, add file paths if needed
 
 
 def send_completion_mail(
@@ -23,8 +25,9 @@ def send_completion_mail(
     ftp_dir,
     to_list,
     cc_list=None,
-    attachments=None,
+    attachments=diff_file_path,
     error=0,
+    has_attach=False,
 ):
     #remove duplicates
     unique_lot = list(dict.fromkeys(lots))
@@ -87,10 +90,18 @@ def send_completion_mail(
     if cc_list:
         mail.CC = ";".join(cc_list)
 
-    if attachments:
+    if attachments and has_attach:
+        # Ensure attachments is always a list
+        if isinstance(attachments, str):
+            attachments = [attachments]
+
         for file in attachments:
-            if file and os.path.exists(file):
-                mail.Attachments.Add(file)
+            if file:
+                if os.path.exists(file):
+                    print(f"[MAIL] Attaching file: {file}")
+                    mail.Attachments.Add(file)
+                else:
+                    print(f"[MAIL] WARNING: Attachment not found or missing: {file}")
 
     print(f"{mail.Body}")
     mail.Send()

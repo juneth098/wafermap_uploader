@@ -1,7 +1,10 @@
 # scanner.py
 import os
 import zipfile
-from configs import DEVICE_TO_PRODUCT
+from configs import PRODUCT_CONFIG
+
+
+DEVICE_TO_PRODUCT = PRODUCT_CONFIG["_device_to_product"]
 # -------------------------
 # Map wafer DEVICE_NAME to product
 # -------------------------

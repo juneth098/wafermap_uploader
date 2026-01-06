@@ -3,11 +3,9 @@ import os
 import re
 from string import Template
 from configs import (
-    ROOT_DIR, SUBCON_MAP,
-    TESTER_DICT, TEST_PROGRAM_DICT,
-    LOAD_BOARD_DICT, PROBE_CARD_DICT,
-    SOFT_BIN_DICT
+    ROOT_DIR, PRODUCT_CONFIG
 )
+
 from utils import (
     mkdir,
     format_zip_timestamp,
@@ -67,6 +65,8 @@ def process_wafer(lot, wafer, filename, product, stage, zip_timestamp=None, fact
     print(f"[UMC WRITER] Processing file: {filename}")
     print(f"[UMC WRITER] Stage: {stage}")
 
+
+
     # ------------------------
     # Parse wafer TXT
     # ------------------------
@@ -105,15 +105,18 @@ def process_wafer(lot, wafer, filename, product, stage, zip_timestamp=None, fact
     #operator_class = factory_info.get("Class", "")
     operator_id = factory_info.get("operator_id", "")
 
+    cfg = PRODUCT_CONFIG.get(product)
+    if not cfg:
+        raise ValueError(f"Product {product} not found in PRODUCT_CONFIG")
 
     # ------------------------
     # Header fields
     # ------------------------
-    subcon = SUBCON_MAP.get(product, "GREATEK TAIWAN")
-    tester_name = f"{TESTER_DICT.get(product, '')} {machine}".strip()
-    test_program = program or TEST_PROGRAM_DICT.get(product, "")
-    load_board = LOAD_BOARD_DICT.get(product, "")
-    probe_card = PROBE_CARD_DICT.get(product, "RP923/1")
+    subcon = cfg["subcon"]
+    tester_name = f"{cfg["tester"]} {machine}"
+    test_program = program or cfg["test_program"]
+    load_board = cfg["load_board"]
+    probe_card = cfg["probe_card"]
     start_time = format_zip_timestamp(zip_timestamp)
     # ------------------------
     # Output path
@@ -131,7 +134,7 @@ def process_wafer(lot, wafer, filename, product, stage, zip_timestamp=None, fact
     # ------------------------
     # Generate soft-bin section
     # ------------------------
-    soft_bins = SOFT_BIN_DICT.get(product, [])
+    soft_bins = cfg["soft_bins"]
     soft_bin_lines = []
 
     for b, desc in soft_bins:
