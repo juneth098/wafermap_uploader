@@ -1,88 +1,97 @@
 # ftp_client.py
-from ftplib import FTP
 import os
 import time
+import pycurl
+from utils import sha256_file
+from configs import FTP_USERPWD
 
-MAX_FTP_RETRIES = 3  # default max retries
+MAX_FTP_RETRIES = 3
+
+# -------------------------
+# Create reusable curl objects for upload/download
+# -------------------------
+curl_upload = pycurl.Curl()
+curl_upload.setopt(pycurl.USERPWD, FTP_USERPWD)
+curl_upload.setopt(pycurl.VERBOSE, 0)
+
+curl_download = pycurl.Curl()
+curl_download.setopt(pycurl.USERPWD, FTP_USERPWD)
+curl_download.setopt(pycurl.VERBOSE, 0)
+
 
 class FTPClient:
-    def __init__(self, url, userpwd):
-        """
-        Initialize FTP connection.
-        url: FTP server address
-        userpwd: "username:password"
-        """
-        self.url = url
-        self.user, self.pwd = userpwd.split(":")
-        print(f"[FTP] Connecting to {self.url} ...")
-        self.ftp = FTP(self.url)
-        self.ftp.login(self.user, self.pwd)
-        print(f"[FTP] Logged in as {self.user}")
+    """
+    FTP client using pycurl for upload + verification
+    """
 
-    def upload_and_verify(self, filepath, remote_dir=None, max_retries=MAX_FTP_RETRIES):
-        """
-        Upload a file to FTP server with retries.
-        filepath: full local path
-        remote_dir: FTP directory to upload to (optional)
-        """
-        filename = os.path.basename(filepath)
+    def __init__(self, ftp_base_url, remote_dir="/"):
+        self.ftp_base_url = ftp_base_url.rstrip("/")
+        self.remote_dir = remote_dir
 
-        for attempt in range(1, max_retries + 1):
-            print(f"[FTP] Upload attempt {attempt}: {filename}")
+    def upload_and_verify(self, local_file, max_retries=MAX_FTP_RETRIES):
+        """
+        Uploads a file, downloads it back, and verifies SHA256.
+        Returns True if successful.
+        """
+        basename = os.path.basename(local_file)
+        remote_url = f"{self.ftp_base_url}/{basename}"
+        temp_dir = os.path.dirname(local_file) or "."
+        local_verify = os.path.join(temp_dir, f"verify_{basename}")
+
+        # Upload
+        if not self._upload_with_retry(local_file, remote_url, max_retries):
+            print(f"[FTP] Upload failed for {basename}")
+            return False
+
+        # Download-back for verification
+        if not self._download_with_retry(remote_url, local_verify, max_retries):
+            print(f"[FTP] Download-back failed for {basename}")
+            return False
+
+        # Verify hash
+        if sha256_file(local_file) != sha256_file(local_verify):
+            print(f"[FTP] File mismatch after upload: {basename}")
+            os.remove(local_verify)
+            return False
+
+        print(f"[FTP] Verified OK: {basename}")
+        os.remove(local_verify)
+        return True
+
+    # -------------------------
+    # Internal helpers
+    # -------------------------
+    def _upload_with_retry(self, local_file, remote_url, retries):
+        for attempt in range(1, retries + 1):
             try:
-                # open file for each retry to avoid "read of closed file"
-                with open(filepath, "rb") as f:
-                    if remote_dir:
-                        self._ensure_dir(remote_dir)
-                        self._safe_cwd(remote_dir)
-                    self.ftp.storbinary(f"STOR {filename}", f)
-
-                # verify file exists on server
-                try:
-                    files = self.ftp.nlst(remote_dir or ".")
-                except Exception:
-                    files = []
-                if filename in files:
-                    print(f"[FTP] Upload successful: {filename}")
-                    return True
-                else:
-                    print(f"[FTP] Upload incomplete, retrying...")
-                    time.sleep(1)
-
-            except Exception as e:
-                print(f"[FTP] ERROR: Upload failed (attempt {attempt}): {e}")
-                time.sleep(1)
-
-        print(f"[FTP] FAILED to upload after {max_retries} attempts: {filename}")
+                print(f"[FTP] Upload attempt {attempt}: {os.path.basename(local_file)}")
+                with open(local_file, "rb") as f:
+                    curl_upload.setopt(pycurl.URL, remote_url)
+                    curl_upload.setopt(pycurl.UPLOAD, 1)
+                    curl_upload.setopt(pycurl.READDATA, f)
+                    curl_upload.perform()
+                return True
+            except pycurl.error as e:
+                print(f"[FTP] Upload error (attempt {attempt}): {e}")
+                time.sleep(2)
         return False
 
-    def _ensure_dir(self, path):
-        """Create remote directory if it doesn't exist"""
-        dirs = path.strip("/").split("/")
-        for d in dirs:
+    def _download_with_retry(self, remote_url, local_file, retries):
+        for attempt in range(1, retries + 1):
             try:
-                if d not in self.ftp.nlst():
-                    try:
-                        self.ftp.mkd(d)
-                        print(f"[FTP] Created directory: {d}")
-                    except Exception:
-                        print(f"[FTP] WARNING: Failed to create directory '{d}' (may already exist or permission issue)")
-                self._safe_cwd(d)
-            except Exception as e:
-                print(f"[FTP] WARNING: Cannot enter directory '{d}': {e}")
-
-    def _safe_cwd(self, path):
-        """Change to directory safely"""
-        try:
-            self.ftp.cwd(path)
-        except Exception as e:
-            print(f"[FTP] WARNING: Failed to change directory to '{path}': {e}")
+                print(f"[FTP] Download attempt {attempt}: {os.path.basename(local_file)}")
+                with open(local_file, "wb") as f:
+                    curl_download.setopt(pycurl.URL, remote_url)
+                    curl_download.setopt(pycurl.WRITEFUNCTION, f.write)
+                    curl_download.perform()
+                return True
+            except pycurl.error as e:
+                print(f"[FTP] Download error (attempt {attempt}): {e}")
+                time.sleep(2)
+        return False
 
     def close(self):
-        """Close FTP connection"""
-        if self.ftp:
-            try:
-                self.ftp.quit()
-                print("[FTP] Connection closed")
-            except Exception as e:
-                print(f"[FTP] WARNING: Failed to close FTP connection: {e}")
+        """Cleanup curl objects"""
+        curl_upload.close()
+        curl_download.close()
+        print("[FTP] Curl sessions closed")

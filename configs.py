@@ -1,6 +1,7 @@
 # configs.py
 import os
 from dotenv import load_dotenv
+import csv
 
 load_dotenv()
 
@@ -8,8 +9,8 @@ load_dotenv()
 # CONFIG
 # -------------------------
 #PRODUCT_TO_CHECK = "FT4232H-C"  #Reference Product
-#PRODUCT_TO_CHECK = "FT233H-B"   #Target1
-PRODUCT_TO_CHECK = "FT260-B"    #Target2
+PRODUCT_TO_CHECK = "FT233H-B"   #Target1
+#PRODUCT_TO_CHECK = "FT260-B"    #Target2
 
 # -------------------------
 # PATHS
@@ -57,99 +58,53 @@ FTP_BASE_URL = "ftp://tftdi@ftp1.umc.com/CP_S_UMC/test_dir_geoff" # TEST Environ
 
 
 # -------------------------
-# HARD-CODED Configs
+# Load Product Configs from CSV
 # -------------------------
-PRODUCT_CONFIG = {
-    # -----------------------
-    # Raw wafer → product map
-    # -----------------------
-    "_device_to_product": {
-        "FT232H_REVC DIE-AP": "FT232H-C",
-        "FT233H REVB DIE-AP": "FT233H-B",
-        "FT4232H REVC DIE-AP": "FT4232H-C",
-        "FT260_REVB DIE-AP": "FT260-B",
-    },
+PRODUCT_CSV = r".\product_config.csv"  # path to your CSV
 
-    # -----------------------
-    # Product configurations
-    # -----------------------
-    "FT232H-C": {
-        "subcon": "GREATEK TAIWAN",
-        "tester": "CT_2009",
-        "test_program": "ct2008prb_7.46",
-        "load_board": "",
-        "probe_card": "",
-        "soft_bins": [
-            (0, "[]"),
-            (1, "[GOOD]"),
-            (2, "[FAIL EFUSE]"),
-            (3, "[FAIL CC]"),
-            (4, "[FAIL DIGITAL]"),
-            (5, "[FAIL OPEN SHORT]"),
-            (6, "[]"),
-            (7, "[]"),
-            (8, "[]"),
-            (9, "[]"),
-        ],
-    },
+def parse_soft_bins(soft_bin_str):
+    """
+    Convert CSV string to list of tuples [(0,"[]"), ...]
+    """
+    bins = []
+    for line in soft_bin_str.strip().splitlines():
+        if not line.strip():
+            continue
+        idx, desc = line.split(":", 1)
+        bins.append((int(idx.strip()), desc.strip().strip('"')))
+    return bins
 
-    "FT233H-B": {
-        "subcon": "GREATEK TAIWAN",
-        "tester": "J750",
-        "test_program": "FT233H_X4SITES_CP_REV1P8_20220613",
-        "load_board": "",
-        "probe_card": "",
-        "soft_bins": [
-            (0, "[]"),
-            (1, "[GOOD]"),
-            (2, "[FAIL EFUSE]"),
-            (3, "[FAIL CC]"),
-            (4, "[FAIL DIGITAL]"),
-            (5, "[FAIL OPEN SHORT]"),
-            (6, "[]"),
-            (7, "[]"),
-            (8, "[]"),
-            (9, "[]"),
-        ],
-    },
 
-    "FT4232H-C": {
-        "subcon": "GREATEK TAIWAN",
-        "tester": "CT_2009",
-        "test_program": "ct2008prb_7.46",
-        "load_board": "",
-        "probe_card": "RP923/1",
-        "soft_bins": [
-            (0, "[]"),
-            (1, "[GOOD]"),
-            (2, "[FAIL POWER]"),
-            (3, "[FAIL DIGITAL]"),
-            (4, "[OTHERS]"),
-            (5, "[REGULATOR FAIL]"),
-            (6, "[]"),
-            (7, "[]"),
-            (8, "[]"),
-            (9, "[]"),
-        ],
-    },
+# Normalize PRODUCT_TO_CHECK to a set
+if isinstance(PRODUCT_TO_CHECK, str):
+    PRODUCTS_TO_LOAD = {PRODUCT_TO_CHECK}
+else:
+    PRODUCTS_TO_LOAD = set(PRODUCT_TO_CHECK)
 
-    "FT260-B": {
-        "subcon": "GREATEK TAIWAN",
-        "tester": "J750",
-        "test_program": "FT260_CP_01_20160105",
-        "load_board": "",
-        "probe_card": "",
-        "soft_bins": [
-            (0, "[]"),
-            (1, "[GOOD]"),
-            (2, "[]"),
-            (3, "[]"),
-            (4, "[FAIL POWER SHORTS]"),
-            (5, "[FAIL OPEN SHORT]"),
-            (6, "[FAIL LEAKAGE]"),
-            (7, "[FAIL DIGITAL]"),
-            (8, "[FAIL PU PD]"),
-            (9, "[]"),
-        ],
-    },
-}
+
+PRODUCT_CONFIG = {"_device_to_product": {}}
+
+with open(PRODUCT_CSV, newline="", encoding="utf-8") as f:
+    reader = csv.DictReader(f, delimiter=",")
+
+    for row in reader:
+        product = row["PRODUCT"].strip()
+
+        #  Skip products not requested
+        if product not in PRODUCTS_TO_LOAD:
+            continue
+
+        device = row["DEVICE_NAME"].strip()
+
+        PRODUCT_CONFIG["_device_to_product"][device] = product
+
+        PRODUCT_CONFIG[product] = {
+            "subcon": row["SUBCON"].strip(),
+            "tester": row["TESTER"].strip(),
+            "test_program": row["TEST_PROGRAM"].strip(),
+            "load_board": row["LOAD_BOARD"].strip(),
+            "probe_card": row["PROBE_CARD"].strip(),
+            "soft_bins": parse_soft_bins(row["SOFT_BINS"]),
+        }
+
+print(f"[CONFIG] Loaded products from CSV: {list(PRODUCTS_TO_LOAD)}")

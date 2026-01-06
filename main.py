@@ -20,7 +20,7 @@ from utils import html_diff
 from mailer import send_completion_mail, to_list
 
 # Create single FTP connection
-ftp = FTPClient(FTP_HOST, FTP_USERPWD)
+ftp = FTPClient(FTP_BASE_URL)
 
 # ============================================================
 # Step 0: Clean working directories
@@ -119,7 +119,6 @@ for line in wafer_summary.strip().split("\n"):
 # ============================================================
 # Step 4: Copy ZIPs that contain NOT_UPLOADED wafermaps
 # ============================================================
-os.makedirs(TEMP_DL_DIR, exist_ok=True)
 if not not_uploaded_wafermaps:
     print("\nAll wafermaps are already UPLOADED.")
 else:
@@ -184,8 +183,11 @@ else:
                     # ============================
                     # FTP Upload using single connection
                     # ============================
-                    if ftp.upload_and_verify(umc_file, remote_dir=None, max_retries=MAX_FTP_RETRIES):
+                    if ftp.upload_and_verify(umc_file, max_retries=MAX_FTP_RETRIES):
                         uploaded_wafers += 1
+                        # -------------------------
+                        # Update DB only if FTP succeeded
+                        # -------------------------
                         success = upsert_upload(db_session, upload_table, PRODUCT_TO_CHECK, lot, wafer, stage)
                         if success:
                             db_update_count += 1
@@ -193,8 +195,9 @@ else:
                             print(f"[WARN] Failed to insert/update DB for {lot} W{wafer} {stage}")
                             error_count += 1
                     else:
-                        print("[WARN] FTP upload failed, DB not updated")
+                        print(f"[WARN] FTP upload failed for wafer {wafer}, DB not updated")
                         error_count += 1
+
 
         except zipfile.BadZipFile:
             error_count += 1
