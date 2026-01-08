@@ -55,7 +55,9 @@ def sha256_file(file_path):
 # -------------------------
 # Side-by-side HTML diff
 # -------------------------
-diff_file = "../wafer_upload_diff.html"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+diff_file = os.path.join(BASE_DIR, "wafer_upload_diff.html")
+
 import difflib
 from html import escape
 

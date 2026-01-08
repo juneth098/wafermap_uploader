@@ -38,8 +38,8 @@ The latest Windows executable can be downloaded from the **GitHub Releases** pag
 ### Using the EXE
 
 1. **Download and run `WaferMapUploader.exe`.**  
-2. **Add products** by clicking the **➕ button**.  
-3. **Remove products** by clicking the **➖ button**.  
+2. **Choose product/s** and click **➕ button**.  
+3. **Remove product/s** by clicking the **➖ button**.  
 4. **(Optional) Update configurations** by clicking the **“Configs” button**:  
    - Configure fields such as `PRODUCT`, `DEVICE_NAME`, `SUBCON`, `TESTER`, `TEST_PROGRAM`, `LOAD_BOARD`, `PROBE_CARD`, `SOFT_BINS`.  
 5. **Click “Run”** to process the wafer maps:  
@@ -64,9 +64,9 @@ git clone https://github.com/juneth098/wafermap_uploader.git
 ```bash 
 python src/gui.py 
 ```
-3. **Add products** by clicking the **➕ button**.  
-4. **Remove products** by clicking the **➖ button**.  
-5. **(Optional) Update configurations** by clicking the **“Configs” button**:  
+3. **Choose product/s** and click **➕ button**.  
+4. **Remove product/s** by clicking the **➖ button**. 
+5. **(Optional) Update configurations** by clicking the **“Edit Config (CSV)” button**:  
    - Configure fields such as `PRODUCT`, `DEVICE_NAME`, `SUBCON`, `TESTER`, `TEST_PROGRAM`, `LOAD_BOARD`, `PROBE_CARD`, `SOFT_BINS`.  
 6. **Click “Run”** to process the wafer maps:  
    - Converts the wafer maps into **UMC standard format**.  
