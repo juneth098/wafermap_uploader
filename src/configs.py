@@ -23,16 +23,16 @@ PRODUCT_TO_CHECK = "FT233H-B"   #Target1
 
 #Path for the final wafermap output in UMC-format
 #ROOT_DIR = r"D:\UMC_log_Processing\files_for_FTP_processing\new_scheme_2018\FT232RV2"
-ROOT_DIR = r".\converted_umc" #test environment
+ROOT_DIR = r"../converted_umc"  #test environment
 
 #Path for the raw wafer map to be converted
 #NAS_MAP_DIR = r"M:\DOWNLOADED\CR_Micro\PROBE\MAP"      # REFERENCE contains wafermap from the OSAT
 #NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
-NAS_MAP_DIR = r".\raw_wafer_map"                       # TEST Environment
+NAS_MAP_DIR = r"../raw_wafer_map"  # TEST Environment
 
 #Temporary path for processing the files
 #TEMP_DL_DIR = r"D:\UMC_log_Processing\files_for_FTP_processing\new_scheme_2018\temp_dl_area"
-TEMP_DL_DIR = r".\temp_dl"
+TEMP_DL_DIR = r"../temp_dl"
 
 # -------------------------
 # DATABASE

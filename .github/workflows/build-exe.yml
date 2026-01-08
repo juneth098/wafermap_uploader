@@ -1,0 +1,82 @@
+name: Build EXE and Release
+
+on:
+  push:
+    tags:
+      - 'v*'   # Trigger when pushing tags like v1.0
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. Install PyInstaller + Pillow for .ico support
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller pillow
+
+      # 4. Build single-file GUI EXE with custom icon
+      - name: Build EXE
+        run: |
+          pyinstaller ^
+            --onefile ^
+            --name WaferMapUploader ^
+            --windowed ^
+            --icon=bin/wafermap_uploader.ico ^
+            src/gui.py
+          echo "EXE build complete!"
+
+      # 5. Move EXE to repo root
+      - name: Move EXE to root
+        run: |
+          powershell -Command "Move-Item -Path '.\dist\WaferMapUploader.exe' -Destination '.\WaferMapUploader.exe' -Force"
+          echo "EXE is now at root path!"
+
+      # 6. Clean up PyInstaller artifacts
+      - name: Clean build artifacts
+        run: |
+          if (Test-Path ".\build") { Remove-Item ".\build" -Recurse -Force }
+          if (Test-Path ".\dist") { Remove-Item ".\dist" -Recurse -Force }
+          Remove-Item "*.spec" -Force
+
+      # 7. Zip the EXE for release
+      - name: Package EXE as ZIP
+        run: |
+          powershell -Command "Compress-Archive -Path '.\WaferMapUploader.exe' -DestinationPath '.\WaferMapUploader.zip' -Force"
+          echo "EXE packaged into ZIP!"
+
+      # 8. Upload ZIP as workflow artifact (optional)
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WaferMapUploader
+          path: WaferMapUploader.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      # 9. Download built ZIP
+      - name: Download built ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: WaferMapUploader
+
+      # 10. Publish GitHub Release
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: WaferMapUploader.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

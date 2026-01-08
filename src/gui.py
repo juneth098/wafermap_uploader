@@ -9,7 +9,7 @@ import configs
 import webbrowser
 
 PRODUCT_CSV = "product_config.csv"
-LOG_FILE = "console_log.txt"
+LOG_FILE = "../console_log.txt"
 
 
 # -------------------------
