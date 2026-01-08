@@ -2,10 +2,7 @@
 import win32com.client
 import os
 from datetime import datetime
-from utils import diff_file
 import sys
-# Make sure it's an absolute path
-diff_file_path = os.path.join(os.getcwd(), diff_file)  # or use your TEMP_DL_DIR if
 
 # Prepare stats for email
 to_list=[]
@@ -25,7 +22,7 @@ def send_completion_mail(
     ftp_dir,
     to_list,
     cc_list=None,
-    attachments=diff_file_path,
+    attachments=None,
     error=0,
     has_attach=False,
 ):

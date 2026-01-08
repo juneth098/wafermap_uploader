@@ -286,7 +286,7 @@ def run_main(PRODUCT_TO_CHECK):
             # ============================================================
             # Step 12: HTML Diff (Highlight newly uploaded wafers)
             # ============================================================
-            html_diff(first_scan_line, second_scan_line)
+            diff_file_path = html_diff(first_scan_line, second_scan_line)
 
         # ============================================================
         # Step 4: Send email
@@ -300,7 +300,8 @@ def run_main(PRODUCT_TO_CHECK):
             ftp_dir=FTP_BASE_URL,
             to_list=to_list,
             error=error_count,
-            has_attach=len(not_uploaded_wafermaps) != 0
+            has_attach=len(not_uploaded_wafermaps) != 0,
+            attachments = diff_file_path
         )
     finally:
         # ============================================================

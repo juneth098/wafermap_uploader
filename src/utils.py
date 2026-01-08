@@ -5,6 +5,14 @@ import shutil
 import sys
 
 
+if getattr(sys, 'frozen', False):
+    # Running from PyInstaller EXE
+    BASE_DIR = sys._MEIPASS  # temp folder PyInstaller extracts to
+    EXE_DIR = os.path.dirname(sys.executable)  # folder where EXE is located
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    EXE_DIR = BASE_DIR
+
 # -------------------------
 # Filesystem helpers
 # -------------------------
@@ -55,13 +63,12 @@ def sha256_file(file_path):
 # -------------------------
 # Side-by-side HTML diff
 # -------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 diff_file = os.path.join(BASE_DIR, "wafer_upload_diff.html")
 
 import difflib
 from html import escape
 
-def html_diff(first_lines, second_lines, output_file="wafer_upload_diff.html"):
+def html_diff(first_lines, second_lines):
     """
     Generate a side-by-side HTML diff highlighting differences.
     - Only changed characters in red
@@ -107,10 +114,14 @@ def html_diff(first_lines, second_lines, output_file="wafer_upload_diff.html"):
 
     html.append("</table></body></html>")
 
+    output_file = diff_file
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("\n".join(html))
 
     print(f"[INFO] Side-by-side HTML diff saved to {output_file}")
+
+    return output_file
+
 
 
 # -------------------------

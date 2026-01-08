@@ -6,6 +6,15 @@ import sys
 
 load_dotenv()
 
+if getattr(sys, 'frozen', False):
+    # Running from PyInstaller EXE
+    BASE_DIR = sys._MEIPASS  # temp folder PyInstaller extracts to
+    EXE_DIR = os.path.dirname(sys.executable)  # folder where EXE is located
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    EXE_DIR = BASE_DIR
+
+
 #script details
 author = "Juneth Viktor Ellon Moreno"
 script_ver = "1"
@@ -38,18 +47,20 @@ if IS_TEST_DEBUG_MODE:
 if IS_PRODUCTION_MODE:
     ROOT_DIR = r"D:\UMC_log_Processing\files_for_FTP_processing\new_scheme_2018\FT232RV2"
 if IS_TEST_DEBUG_MODE:
-    ROOT_DIR = r"../converted_umc"  #test environment
-
+    ROOT_DIR = os.path.join(EXE_DIR, "converted_umc")
 #Path for the raw wafer map to be converted
 #NAS_MAP_DIR = r"M:\DOWNLOADED\CR_Micro\PROBE\MAP"      # REFERENCE contains wafermap from the OSAT
 if IS_PRODUCTION_MODE:
     NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
 if IS_TEST_DEBUG_MODE:
-    NAS_MAP_DIR = r"../raw_wafer_map"  # TEST Environment
+    #NAS_MAP_DIR = os.path.join(BASE_DIR, "raw_wafer_map")# TEST Environment
+    NAS_MAP_DIR = r"./raw_wafer_map"  # TEST Environment
+
 
 #Temporary path for processing the files
 #TEMP_DL_DIR = r"D:\UMC_log_Processing\files_for_FTP_processing\new_scheme_2018\temp_dl_area"
-TEMP_DL_DIR = r"../temp_dl"
+TEMP_DL_DIR = os.path.join(EXE_DIR, "temp_dl")
+
 
 # -------------------------
 # DATABASE
@@ -87,9 +98,7 @@ if IS_TEST_DEBUG_MODE:
 # Load Product Configs from CSV
 # -------------------------
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PRODUCT_CSV = os.path.join(BASE_DIR, "product_config.csv")
-
 
 def parse_soft_bins(soft_bin_str):
     """

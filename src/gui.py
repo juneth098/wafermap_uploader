@@ -5,12 +5,9 @@ import csv
 import os
 import threading
 import webbrowser
-from main import run_main as main_run  # import the callable main
+import main
 import configs
 from configs import PRODUCT_CSV
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_FILE = os.path.join(BASE_DIR, "console_log.txt")
 
 # -------------------------
 # CSV Loader
@@ -105,30 +102,16 @@ def start_run():
 
     def target():
         import pythoncom
-        import subprocess
-        import sys
         try:
-            pythoncom.CoInitialize()  # Initialize COM
-
+            pythoncom.CoInitialize()  # init COM
             for product in selected_products:
-                # Run main.py in a fresh Python process
-                subprocess.run(
-                    [sys.executable, os.path.join(BASE_DIR, "main.py"), product],
-                    check=True
-                )
-
-            # When all products are done, update GUI
+                main.run_main(product)  # <- call function directly
             root.after(0, on_run_complete)
-
-        except subprocess.CalledProcessError as e:
-            # Catch errors from subprocess (non-zero exit)
-            err_msg = f"Error in product '{product}': {e}"
-            root.after(0, lambda msg=err_msg: on_run_error(msg))
         except Exception as e:
             err_msg = str(e)
             root.after(0, lambda msg=err_msg: on_run_error(msg))
         finally:
-            pythoncom.CoUninitialize()  # Clean up COM
+            pythoncom.CoUninitialize()  # cleanup
 
     threading.Thread(target=target, daemon=True).start()
 
@@ -136,7 +119,7 @@ def on_run_complete():
     run_btn.config(state="normal")
     status_var.set("Completed")
     status_label.config(fg="green")
-    messagebox.showinfo("Done", "Run completed.\nSee console_log.txt for details.")
+    messagebox.showinfo("Done", "Run completed.")
 
 def on_run_error(msg):
     run_btn.config(state="normal")
