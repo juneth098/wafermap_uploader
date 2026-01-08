@@ -18,7 +18,7 @@ jobs:
       - name: Package EXE + CSV
         shell: bash
         run: |
-          zip -j WaferMapUploader.zip WaferMapUploader.exe src/product_config.csv
+          zip -j WaferMapUploader.zip WafermapUploader.exe src/product_config.csv
           echo "EXE + CSV packaged into ZIP!"
 
       # 3. Upload ZIP artifact
