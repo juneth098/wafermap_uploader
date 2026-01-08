@@ -55,7 +55,7 @@ def sha256_file(file_path):
 # -------------------------
 # Side-by-side HTML diff
 # -------------------------
-diff_file = "wafer_upload_diff.html"
+diff_file = "../wafer_upload_diff.html"
 import difflib
 from html import escape
 

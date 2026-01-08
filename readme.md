@@ -53,5 +53,5 @@ The latest Windows executable can be downloaded from the **GitHub Releases** pag
 
 1. Install Python 3.10+  
 2. Run `src/gui.py` directly:
-```bash
-python src/gui.py
+```bash 
+
