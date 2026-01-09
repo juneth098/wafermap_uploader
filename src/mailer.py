@@ -4,15 +4,6 @@ import os
 from datetime import datetime
 import sys
 
-# Prepare stats for email
-notification_list=[]
-notification_list.append("juneth.viktor@ftdichip.com")  # For test environment
-#notification_list.append("alamuri.venkateswararao@ftdichip.com")  # For test environment
-#notification_list.append("ftdi_prodtest@ftdichip.com")  # replace with actual recipients
-#notification_CC_list = ["manager@example.com"]  # optional
-attachments = []  # optional, add file paths if needed
-to_list = notification_list
-
 def send_completion_mail(
     product,
     lots,
@@ -20,12 +11,22 @@ def send_completion_mail(
     uploaded_wafers,
     db_update_count,
     ftp_dir,
-    reciepient_list,
+    recipient_list,
     cc_list=None,
     attachments=None,
     error=0,
     has_attach=False,
 ):
+    # Prepare stats for email
+    recipient_list = []
+    attachments = []  # optional, add file paths if needed
+
+    #default recipient list
+    recipient_list.append("juneth.viktor@ftdichip.com")  # For test environment
+    # recipient_list.append("alamuri.venkateswararao@ftdichip.com")  # For test environment
+    # recipient_list.append("ftdi_prodtest@ftdichip.com")  # replace with actual recipients
+    # cc_list = ["manager@example.com"]  # optional
+
     #remove duplicates
     unique_lot = list(dict.fromkeys(lots))
 
@@ -106,7 +107,7 @@ def send_completion_mail(
         </html>
         """
 
-    mail.To = ";".join(reciepient_list)
+    mail.To = ";".join(recipient_list)
 
     if cc_list:
         mail.CC = ";".join(cc_list)

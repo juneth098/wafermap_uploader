@@ -18,7 +18,7 @@ from scanner import scan_maps
 from umc_writer import process_wafer
 from ftp_client import FTPClient, MAX_FTP_RETRIES
 from utils import html_diff
-from mailer import send_completion_mail, to_list
+from mailer import send_completion_mail
 
 
 def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
@@ -29,18 +29,13 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
 
 
     # ============================================================
-    # Step 0: Clean working directories
+    # Step 1: Clean working directories
     # ============================================================
     for dir_to_clean in [TEMP_DL_DIR, ROOT_DIR]:
         if os.path.exists(dir_to_clean):
             print(f"[CLEANUP] Removing old files in {dir_to_clean}")
             shutil.rmtree(dir_to_clean)
         os.makedirs(dir_to_clean, exist_ok=True)
-
-    # ============================================================
-    # Step 1: DB Session
-    # ============================================================
-    os.makedirs(TEMP_DL_DIR, exist_ok=True)
 
     # ============================================================
     # Step 2: Scan NAS ZIPs
@@ -51,13 +46,11 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
     lots = []
     first_scan_line = []
 
-    wafermap_to_upload = 0
     total_wafer = 0
     uploaded_count = 0
     not_uploaded_count = 0
     uploaded_wafers = 0
     db_update_count = 0
-    item_count = 0
     error_count = 0
     diff_file_path = None
 
@@ -124,8 +117,9 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
         # ============================================================
         # Step 4: Copy ZIPs that contain NOT_UPLOADED wafermaps
         # ============================================================
+        zip_to_process = None
         if not not_uploaded_wafermaps:
-        	print("\nAll wafermaps are already UPLOADED.")
+            print("\nAll wafermaps are already UPLOADED.")
         else:
             zip_to_process = {w["zip_file"] for w in not_uploaded_wafermaps}
 
@@ -180,9 +174,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
                                 zip_timestamp=zip_timestamp,
                                 factory_info=factory_info,
                             )
-
                             lots.append(lot)
-
                            # ============================
                            # FTP Upload using single connection
                            # ============================
@@ -207,6 +199,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
                     error_count += 1
                     print("Bad ZIP file, skipping:", zip_file)
                     sys.exit(1)
+
     finally:
         ftp.close()
         db_session.close()
@@ -214,7 +207,6 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
 
     if not_uploaded_count != 0:
 
-        wafermap_to_upload = not_uploaded_count
         total_wafer = 0
         uploaded_count = 0
         not_uploaded_count = 0
@@ -282,12 +274,12 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
         for line in wafer_summary.strip().split("\n"):
             second_scan_line.append(line)
 
-
-
         # ============================================================
         # Step 12: HTML Diff (Highlight newly uploaded wafers)
         # ============================================================
         diff_file_path = html_diff(first_scan_line, second_scan_line)
+        first_scan_line.clear()
+        second_scan_line.clear()
 
     # ============================================================
     # Step 4: Send email
@@ -299,12 +291,15 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
         uploaded_wafers=uploaded_wafers,
         db_update_count=db_update_count,
         ftp_dir=FTP_BASE_URL,
-        to_list=to_list,
         error=error_count,
         has_attach=len(not_uploaded_wafermaps) != 0,
         attachments = diff_file_path
     )
     print(f"[DONE] Process completed for {PRODUCT_TO_CHECK}")
+
+    not_uploaded_wafermaps.clear()
+    lots.clear()
+
 
 # ============================================================
 # CLI entry
