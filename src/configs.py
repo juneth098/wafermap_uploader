@@ -31,13 +31,11 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
 # -------------------------
 # CONFIG
 # -------------------------
-if IS_PRODUCTION_MODE:
-    PRODUCT_TO_CHECK = ""
-if IS_TEST_DEBUG_MODE:
-    #PRODUCT_TO_CHECK = ""
-    PRODUCT_TO_CHECK = "FT4232H-C"  #Reference Product
-    #PRODUCT_TO_CHECK = "FT233H-B"   #Target1
-    #PRODUCT_TO_CHECK = "FT260-B"    #Target2
+PRODUCT_TO_CHECK = []
+#PRODUCT_TO_CHECK = ""
+PRODUCT_TO_CHECK.append("FT4232H-C")  #Reference Product
+PRODUCT_TO_CHECK.append("FT233H-B")   #Target1
+PRODUCT_TO_CHECK.append("FT260-B")    #Target2
 
 # -------------------------
 # PATHS
@@ -53,8 +51,8 @@ if IS_TEST_DEBUG_MODE:
 if IS_PRODUCTION_MODE:
     NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
 if IS_TEST_DEBUG_MODE:
-    #NAS_MAP_DIR = os.path.join(BASE_DIR, "raw_wafer_map")# TEST Environment
-    NAS_MAP_DIR = r"./raw_wafer_map"  # TEST Environment
+    NAS_MAP_DIR = os.path.join(BASE_DIR, "raw_wafer_map")# TEST Environment
+    #NAS_MAP_DIR = r"./raw_wafer_map"  # TEST Environment
 
 
 #Temporary path for processing the files

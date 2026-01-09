@@ -8,16 +8,7 @@ import sys
 
 MAX_FTP_RETRIES = 3
 
-# -------------------------
-# Create reusable curl objects for upload/download
-# -------------------------
-curl_upload = pycurl.Curl()
-curl_upload.setopt(pycurl.USERPWD, FTP_USERPWD)
-curl_upload.setopt(pycurl.VERBOSE, 0)
 
-curl_download = pycurl.Curl()
-curl_download.setopt(pycurl.USERPWD, FTP_USERPWD)
-curl_download.setopt(pycurl.VERBOSE, 0)
 
 
 class FTPClient:
@@ -28,6 +19,17 @@ class FTPClient:
     def __init__(self, ftp_base_url, remote_dir="/"):
         self.ftp_base_url = ftp_base_url.rstrip("/")
         self.remote_dir = remote_dir
+
+        # -------------------------
+        # Create reusable curl objects for upload/download
+        # -------------------------
+        self.curl_upload = pycurl.Curl()
+        self.curl_upload.setopt(pycurl.USERPWD, FTP_USERPWD)
+        self.curl_upload.setopt(pycurl.VERBOSE, 0)
+
+        self.curl_download = pycurl.Curl()
+        self.curl_download.setopt(pycurl.USERPWD, FTP_USERPWD)
+        self.curl_download.setopt(pycurl.VERBOSE, 0)
 
     def upload_and_verify(self, local_file, max_retries=MAX_FTP_RETRIES):
         """
@@ -70,14 +72,16 @@ class FTPClient:
             try:
                 print(f"[FTP] Upload attempt {attempt}: {os.path.basename(local_file)}")
                 with open(local_file, "rb") as f:
-                    curl_upload.setopt(pycurl.URL, remote_url)
-                    curl_upload.setopt(pycurl.UPLOAD, 1)
-                    curl_upload.setopt(pycurl.READDATA, f)
-                    curl_upload.perform()
+                    self.curl_upload.setopt(pycurl.URL, remote_url)
+                    self.curl_upload.setopt(pycurl.UPLOAD, 1)
+                    self.curl_upload.setopt(pycurl.READDATA, f)
+                    self.curl_upload.perform()
                 return True
             except pycurl.error as e:
                 print(f"[FTP] Upload error (attempt {attempt}): {e}")
                 time.sleep(2)
+                # Reset handle for retry
+                self._reset_upload_handle()
         return False
 
     def _download_with_retry(self, remote_url, local_file, retries):
@@ -85,17 +89,33 @@ class FTPClient:
             try:
                 print(f"[FTP] Download attempt {attempt}: {os.path.basename(local_file)}")
                 with open(local_file, "wb") as f:
-                    curl_download.setopt(pycurl.URL, remote_url)
-                    curl_download.setopt(pycurl.WRITEFUNCTION, f.write)
-                    curl_download.perform()
+                    self.curl_download.setopt(pycurl.URL, remote_url)
+                    self.curl_download.setopt(pycurl.WRITEFUNCTION, f.write)
+                    self.curl_download.perform()
                 return True
             except pycurl.error as e:
                 print(f"[FTP] Download error (attempt {attempt}): {e}")
                 time.sleep(2)
+                # Reset handle for retry
+                self._reset_download_handle()
         return False
+    # -------------------------
+    # Reset handles on failure
+    # -------------------------
+    def _reset_upload_handle(self):
+        self.curl_upload.close()
+        self.curl_upload = pycurl.Curl()
+        self.curl_upload.setopt(pycurl.USERPWD, FTP_USERPWD)
+        self.curl_upload.setopt(pycurl.VERBOSE, 0)
+
+    def _reset_download_handle(self):
+        self.curl_download.close()
+        self.curl_download = pycurl.Curl()
+        self.curl_download.setopt(pycurl.USERPWD, FTP_USERPWD)
+        self.curl_download.setopt(pycurl.VERBOSE, 0)
 
     def close(self):
         """Cleanup curl objects"""
-        curl_upload.close()
-        curl_download.close()
+        self.curl_upload.close()
+        self.curl_download.close()
         print("[FTP] Curl sessions closed")
