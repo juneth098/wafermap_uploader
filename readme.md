@@ -1,6 +1,6 @@
 # ![WaferMapUploader](./bin/wafermap_uploader.ico) WaferMap Uploader
 
-[![License](https://img.shields.io/github/license/juneth098/wafermap_uploader)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **WaferMap Uploader** is a desktop utility that **converts wafer maps provided by OSATs and transforms them into the foundry’s UMC format**, and then **uploads the converted files to an FTP server**.
 
@@ -19,14 +19,17 @@ This tool simplifies wafer map processing and automates upload workflows for sem
 
 ---
 
-## 💾 Download EXE
+## 💾 Download ZIP
 
-The latest Windows executable can be downloaded from the **GitHub Releases** page:
+The latest Zip can be downloaded from the **GitHub Releases** page:
 
 [Download WaferMapUploader EXE](https://github.com/juneth098/wafermap_uploader/releases/latest)  
 
-- **Single-file EXE** (no console window)
-- **No Python installation required**
+````
+WaferMapUploader.zip
+├── product_config.csv          # Contains different Product configuration
+└── WafermapUploader.exe        # Executable file
+`````
 
 
 
@@ -37,12 +40,23 @@ The latest Windows executable can be downloaded from the **GitHub Releases** pag
 
 ### Using the EXE
 
-1. **Download and run `WaferMapUploader.exe`.**  
-2. **Choose product/s** and click **➕ button**.  
-3. **Remove product/s** by clicking the **➖ button**.  
-4. **(Optional) Update configurations** by clicking the **“Configs” button**:  
+1. **Download  the zip file**
+2. Create .env file containing FTP and DB access:
+   - check with Admin for credentials
+   
+EXAMPLE ONLY:
+````
+#DB Access
+DB_URI=mysql://abc123:AbCD1234@10.10.0.10
+#FTP Access
+FTP_USERPWD=user:password@abc123
+````
+3. **Run `WaferMapUploader.exe`.**  
+4. Click `Select Product` dropdown and choose product then click **➕ button** to add.  
+5. **To Remove**, Highlight product in the `listbox` then click  **➖ button**.  
+6. **(Optional) Update configurations** by clicking the `Configs` **button**:  
    - Configure fields such as `PRODUCT`, `DEVICE_NAME`, `SUBCON`, `TESTER`, `TEST_PROGRAM`, `LOAD_BOARD`, `PROBE_CARD`, `SOFT_BINS`.  
-5. **Click “Run”** to process the wafer maps:  
+7. **Click `Run`** to process the wafer maps:  
    - Converts the wafer maps into **UMC standard format**.  
    - Uploads the converted files to the **FTP server**.  
    - Updates the **status in the database**.   
@@ -59,16 +73,27 @@ git clone https://github.com/juneth098/wafermap_uploader.git
 
 ### Using the Python GUI (if running from source)
 
-1. Install Python 3.10+  
-2. Run `src/gui.py` directly:
+1. Install Python 3.10+ 
+2. Create .env file containing FTP and DB access:
+   - check with Admin for credentials
+
+
+   EXAMPLE ONLY:
+````
+#DB Access
+DB_URI=mysql://abc123:AbCD1234@10.10.0.10
+#FTP Access
+FTP_USERPWD=user:password@abc123
+````
+3. Run `src/gui.py` directly:
 ```bash 
 python src/gui.py 
 ```
-3. **Choose product/s** and click **➕ button**.  
-4. **Remove product/s** by clicking the **➖ button**. 
-5. **(Optional) Update configurations** by clicking the **“Edit Config (CSV)” button**:  
+4. Click `Select Product` dropdown and choose product then click **➕ button** to add.  
+5. **To Remove**, Highlight product in the `listbox` then click  **➖ button**.  
+6. **(Optional) Update configurations** by clicking the `Configs` **button**:  
    - Configure fields such as `PRODUCT`, `DEVICE_NAME`, `SUBCON`, `TESTER`, `TEST_PROGRAM`, `LOAD_BOARD`, `PROBE_CARD`, `SOFT_BINS`.  
-6. **Click “Run”** to process the wafer maps:  
+7. **Click `Run`** to process the wafer maps:  
    - Converts the wafer maps into **UMC standard format**.  
    - Uploads the converted files to the **FTP server**.  
    - Updates the **status in the database**.   
@@ -80,6 +105,7 @@ python src/gui.py
 wafermap_uploader/
 ├── raw_wafer_map/         # Example raw wafer maps
 ├── src/
+│   ├── .env                # Created by USER
 │   ├── product_configs.csv # Product Configurations
 │   ├── gui.py              # Main GUI interface
 │   ├── main.py             # Entry script
@@ -99,10 +125,12 @@ wafermap_uploader/
 `````
 ## 🛠️ License
 ````
+MIT License
+
 Copyright (c) 2026 Juneth Viktor Ellon Moreno
-All rights reserved.
 ````
-This project is closed‑source unless otherwise declared.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 ## 📝 Author
 

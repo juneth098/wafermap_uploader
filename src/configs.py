@@ -51,7 +51,7 @@ if IS_TEST_DEBUG_MODE:
 if IS_PRODUCTION_MODE:
     NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
 if IS_TEST_DEBUG_MODE:
-    NAS_MAP_DIR = os.path.join(BASE_DIR, "raw_wafer_map")# TEST Environment
+    NAS_MAP_DIR = os.path.join(EXE_DIR, "raw_wafer_map")# TEST Environment
     #NAS_MAP_DIR = r"./raw_wafer_map"  # TEST Environment
 
 
