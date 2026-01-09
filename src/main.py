@@ -6,7 +6,12 @@ import sys
 from datetime import datetime
 from sqlalchemy import select, and_
 
-from configs import NAS_MAP_DIR, TEMP_DL_DIR, ROOT_DIR, FTP_BASE_URL, FTP_USERPWD, FTP_HOST
+from configs import (
+    NAS_MAP_DIR, 
+    TEMP_DL_DIR, 
+    ROOT_DIR, 
+    FTP_BASE_URL
+)
 from db import (
     get_factory_info,
     upsert_upload,
@@ -19,11 +24,11 @@ from umc_writer import process_wafer
 from ftp_client import FTPClient, MAX_FTP_RETRIES
 from utils import html_diff
 from mailer import send_completion_mail, to_list
-from configs import PRODUCT_TO_CHECK
 
-def run_main(PRODUCT_TO_CHECK):
+
+def run_main(product_to_check = None):
     """Run wafermap upload process for a given product."""
-    if not PRODUCT_TO_CHECK:
+    if not product_to_check:
         print("[ERROR] No product specified")
         return
 
@@ -52,18 +57,19 @@ def run_main(PRODUCT_TO_CHECK):
         # ============================================================
         print("Scanning NAS directory:", NAS_MAP_DIR)
 
-        not_uploaded_wafermaps = []
+        not_uploaded_wafermap = []
         lots = []
         first_scan_line = []
 
-        wafermap_to_upload = 0
         total_wafer = 0
         uploaded_count = 0
         not_uploaded_count = 0
         uploaded_wafers = 0
         db_update_count = 0
-        item_count = 0
         error_count = 0
+
+        diff_file_path = None
+        attach_bool = False
 
         for zip_file in os.listdir(NAS_MAP_DIR):
             if not zip_file.lower().endswith(".zip"):
@@ -73,12 +79,13 @@ def run_main(PRODUCT_TO_CHECK):
                 for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(NAS_MAP_DIR):
                     if os.path.basename(zip_path_inner) != zip_file:
                         continue
-                    if product != PRODUCT_TO_CHECK:
+                    if product != product_to_check:
                         continue
 
-                    total_wafer += 1
-                    lot_prefix = lot.split(".")[0]
+                    total_wafer += 1 #Counts number of wafer_results_tbl
+                    lot_prefix = lot.split(".")[0] #ex. DNY1F.00 -> DNY1F
 
+                    #Check database if the combination of LOT,Wafer,CP is already uploaded
                     record = db_session.execute(
                         select(upload_table.c.id).where(
                             and_(
@@ -89,13 +96,13 @@ def run_main(PRODUCT_TO_CHECK):
                         )
                     ).first()
 
-                    if record:
-                        uploaded_count += 1
+                    if record: #Already in the database
+                        uploaded_count += 1 #count the uploaded wafermap with the same lot
                         status = "UPLOADED"
                     else:
-                        not_uploaded_count += 1
+                        not_uploaded_count += 1  #count the 'to upload' wafermap with the same lot
                         status = "NOT_UPLOADED"
-                        not_uploaded_wafermaps.append({
+                        not_uploaded_wafermap.append({
                             "zip_file": zip_file,
                             "txt_file": txt_file,
                             "lot": lot_prefix,
@@ -103,7 +110,7 @@ def run_main(PRODUCT_TO_CHECK):
                             "stage": stage,
                             "product": product,
                         })
-                    wafer_results_tbl = f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}"
+                    wafer_results_tbl = f"{product_to_check} | Lot={lot} | W{wafer} | {stage} | {status}"
                     print(wafer_results_tbl)
                     first_scan_line.append(wafer_results_tbl)
 
@@ -116,7 +123,7 @@ def run_main(PRODUCT_TO_CHECK):
         # Summary
         # ============================================================
         wafer_summary = f"""
-        Upload status summary for {PRODUCT_TO_CHECK}
+        Upload status summary for {product_to_check}
         Total wafers scanned: {total_wafer}
         Uploaded: {uploaded_count}
         Not uploaded: {not_uploaded_count}
@@ -127,34 +134,34 @@ def run_main(PRODUCT_TO_CHECK):
         # ============================================================
         # Step 4: Copy ZIPs that contain NOT_UPLOADED wafermaps
         # ============================================================
-        if not not_uploaded_wafermaps:
-        	print("\nAll wafermaps are already UPLOADED.")
+        if not not_uploaded_wafermap: #Skip FTP upload and DB update Process
+            print("\nAll wafermaps are already UPLOADED.")
         else:
-            zip_to_process = {w["zip_file"] for w in not_uploaded_wafermaps}
+            zip_to_process = {w["zip_file"] for w in not_uploaded_wafermap} #Gets the Zip file name for all target wafermap
 
-            for zip_file in zip_to_process:
+            for zip_file in zip_to_process: #Copy all target zip into a temporary directory : ./temp_dl
                 shutil.copy2(
-                    os.path.join(NAS_MAP_DIR, zip_file),
-                    os.path.join(TEMP_DL_DIR, zip_file),
+                    os.path.join(NAS_MAP_DIR, zip_file),       #source
+                    os.path.join(TEMP_DL_DIR, zip_file),       #destination
                 )
 
-            print(f"\nProcessing {len(zip_to_process)} ZIPs containing {len(not_uploaded_wafermaps)} NOT_UPLOADED wafermaps...")
+            print(f"\nProcessing {len(zip_to_process)} ZIPs containing {len(not_uploaded_wafermap)} NOT_UPLOADED wafermaps...")
 
            # ========================================================
            # Step 5: Process only NOT_UPLOADED wafermaps
            # ========================================================
-            for item_count, item in enumerate(not_uploaded_wafermaps, start=1):
+            for item_count, item in enumerate(not_uploaded_wafermap, start=1):
                 zip_file = item["zip_file"]
                 txt_name = os.path.basename(item["txt_file"])
                 lot = item["lot"]
                 wafer = item["wafer"]
                 stage = item["stage"]
 
-                print(f"\n----- {item_count}/{len(not_uploaded_wafermaps)} -----")
+                print(f"\n----- {item_count}/{len(not_uploaded_wafermap)} -----")
 
                 zip_path = os.path.join(TEMP_DL_DIR, zip_file)
-                parts = zip_file.replace(".map.zip", "").split("_")
-                zip_timestamp = (
+                parts = zip_file.replace(".map.zip", "").split("_") #Ex: DKWJ3.1_CP1_2025_11_09_17_41_12.map.zip
+                zip_timestamp = ( #Extract the timestamp from the zip filename
                     datetime.strptime("_".join(parts[2:8]), "%Y_%m_%d_%H_%M_%S")
                     .strftime("%Y-%m-%d %H:%M:%S")
                     if len(parts) >= 8
@@ -162,23 +169,24 @@ def run_main(PRODUCT_TO_CHECK):
                 )
 
                 try:
-                    with zipfile.ZipFile(zip_path, "r") as zf:
+                    with zipfile.ZipFile(zip_path, "r") as zf: #opens the zip
                         extract_dir = os.path.join(TEMP_DL_DIR, "extracted", lot, stage)
                         os.makedirs(extract_dir, exist_ok=True)
-                        zf.extractall(extract_dir)
+                        zf.extractall(extract_dir) #extract the zip file with different folder according to lot and stage ex. \temp_dl\extracted\DNCYK\CP2
 
                         for root_dir, _, files in os.walk(extract_dir):
                             if txt_name not in files:
                                 continue
 
                             txt_path = os.path.join(root_dir, txt_name)
-                            factory_info = get_factory_info(fr_session, lot, wafer, PRODUCT_TO_CHECK)
-
+                            #reads the factory reports DB to get the default values
+                            factory_info = get_factory_info(fr_session, lot, wafer, product_to_check)
+                            #converts raw wafermap into UMC Format
                             umc_file = process_wafer(
                                 lot=lot,
                                 wafer=wafer,
                                 filename=txt_path,
-                                product=PRODUCT_TO_CHECK,
+                                product=product_to_check,
                                 stage=stage,
                                 zip_timestamp=zip_timestamp,
                                 factory_info=factory_info,
@@ -194,7 +202,7 @@ def run_main(PRODUCT_TO_CHECK):
                                # -------------------------
                                # Update DB only if FTP succeeded
                                # -------------------------
-                                success = upsert_upload(db_session, upload_table, PRODUCT_TO_CHECK, lot, wafer, stage)
+                                success = upsert_upload(db_session, upload_table, product_to_check, lot, wafer, stage)
                                 if success:
                                     db_update_count += 1
                                 else:
@@ -211,9 +219,9 @@ def run_main(PRODUCT_TO_CHECK):
                     print("Bad ZIP file, skipping:", zip_file)
                     sys.exit(1)
 
-        if not_uploaded_count != 0:
+        #Second scan to check for the DIFF - reads the DB and print summary. lastly, create diff file
+        if not_uploaded_count != 0: #if there are wafermaps need to be uploaded
 
-            wafermap_to_upload = not_uploaded_count
             total_wafer = 0
             uploaded_count = 0
             not_uploaded_count = 0
@@ -228,7 +236,7 @@ def run_main(PRODUCT_TO_CHECK):
                     for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(NAS_MAP_DIR):
                         if os.path.basename(zip_path_inner) != zip_file:
                             continue
-                        if product != PRODUCT_TO_CHECK:
+                        if product != product_to_check:
                             continue
 
                         total_wafer += 1
@@ -250,7 +258,7 @@ def run_main(PRODUCT_TO_CHECK):
                         else:
                             not_uploaded_count += 1
                             status = "NOT_UPLOADED"
-                            not_uploaded_wafermaps.append({
+                            not_uploaded_wafermap.append({
                                 "zip_file": zip_file,
                                 "txt_file": txt_file,
                                 "lot": lot_prefix,
@@ -258,7 +266,7 @@ def run_main(PRODUCT_TO_CHECK):
                                 "stage": stage,
                                 "product": product,
                             })
-                        wafer_results_tbl = f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}"
+                        wafer_results_tbl = f"{product_to_check} | Lot={lot} | W{wafer} | {stage} | {status}"
                         print(wafer_results_tbl)
                         second_scan_line.append(wafer_results_tbl)
 
@@ -271,7 +279,7 @@ def run_main(PRODUCT_TO_CHECK):
             # Summary
             # ============================================================
             wafer_summary = f"""
-            Upload status summary for {PRODUCT_TO_CHECK}
+            Upload status summary for {product_to_check}
             Total wafers scanned: {total_wafer}
             Uploaded: {uploaded_count}
             Not uploaded: {not_uploaded_count}
@@ -281,26 +289,27 @@ def run_main(PRODUCT_TO_CHECK):
             for line in wafer_summary.strip().split("\n"):
                 second_scan_line.append(line)
 
-
-
             # ============================================================
             # Step 12: HTML Diff (Highlight newly uploaded wafers)
             # ============================================================
-            diff_file_path = html_diff(first_scan_line, second_scan_line)
+
+            if len(not_uploaded_wafermap) != 0:
+                diff_file_path = html_diff(first_scan_line, second_scan_line)
+                attach_bool = True
 
         # ============================================================
         # Step 4: Send email
         # ============================================================
         send_completion_mail(
-            product=PRODUCT_TO_CHECK,
+            product=product_to_check,
             lots=lots,
-            total_wafers=len(not_uploaded_wafermaps),
+            total_wafers=len(not_uploaded_wafermap),
             uploaded_wafers=uploaded_wafers,
             db_update_count=db_update_count,
             ftp_dir=FTP_BASE_URL,
-            to_list=to_list,
+            reciepient_list=to_list,
             error=error_count,
-            has_attach=len(not_uploaded_wafermaps) != 0,
+            has_attach=attach_bool,
             attachments = diff_file_path
         )
     finally:
@@ -310,7 +319,7 @@ def run_main(PRODUCT_TO_CHECK):
         db_session.close()
         fr_session.close()
         ftp.close()
-        print(f"[DONE] Process completed for {PRODUCT_TO_CHECK}")
+        print(f"[DONE] Process completed for {product_to_check}")
 
 
 # ============================================================

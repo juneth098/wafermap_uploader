@@ -3,22 +3,15 @@ import os
 from dotenv import load_dotenv
 import csv
 import sys
+from utils import parse_soft_bins
 
 load_dotenv()
 
-if getattr(sys, 'frozen', False):
-    # Running from PyInstaller EXE
-    BASE_DIR = sys._MEIPASS  # temp folder PyInstaller extracts to
-    EXE_DIR = os.path.dirname(sys.executable)  # folder where EXE is located
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    EXE_DIR = BASE_DIR
 
 
 #script details
 author = "Juneth Viktor Ellon Moreno"
 script_ver = "1"
-
 
 #Debug option
 IS_TEST_DEBUG_MODE = True      #Enable only during Test
@@ -29,15 +22,25 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
     sys.exit(1)
 
 # -------------------------
-# CONFIG
+# Config
 # -------------------------
-if IS_PRODUCTION_MODE:
-    PRODUCT_TO_CHECK = ""
+PRODUCT_TO_CHECK = ""
 if IS_TEST_DEBUG_MODE:
-    #PRODUCT_TO_CHECK = ""
-    PRODUCT_TO_CHECK = "FT4232H-C"  #Reference Product
+    PRODUCT_TO_CHECK = ""
+    #PRODUCT_TO_CHECK = "FT4232H-C"  #Reference Product
     #PRODUCT_TO_CHECK = "FT233H-B"   #Target1
     #PRODUCT_TO_CHECK = "FT260-B"    #Target2
+
+
+if getattr(sys, 'frozen', False):
+    # Running from PyInstaller EXE
+    BASE_DIR = sys._MEIPASS  # temp folder PyInstaller extracts to
+    EXE_DIR = os.path.dirname(sys.executable)  # folder where EXE is located
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    EXE_DIR = BASE_DIR
+
+
 
 # -------------------------
 # PATHS
@@ -54,7 +57,8 @@ if IS_PRODUCTION_MODE:
     NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
 if IS_TEST_DEBUG_MODE:
     #NAS_MAP_DIR = os.path.join(BASE_DIR, "raw_wafer_map")# TEST Environment
-    NAS_MAP_DIR = r"./raw_wafer_map"  # TEST Environment
+    #NAS_MAP_DIR = r"./raw_wafer_map"  # TEST Environment
+    NAS_MAP_DIR = os.path.join(EXE_DIR, "raw_wafer_map")
 
 
 #Temporary path for processing the files
@@ -99,18 +103,6 @@ if IS_TEST_DEBUG_MODE:
 # -------------------------
 
 PRODUCT_CSV = os.path.join(BASE_DIR, "product_config.csv")
-
-def parse_soft_bins(soft_bin_str):
-    """
-    Convert CSV string to list of tuples [(0,"[]"), ...]
-    """
-    bins = []
-    for line in soft_bin_str.strip().splitlines():
-        if not line.strip():
-            continue
-        idx, desc = line.split(":", 1)
-        bins.append((int(idx.strip()), desc.strip().strip('"')))
-    return bins
 
 if PRODUCT_TO_CHECK:
     # Normalize PRODUCT_TO_CHECK to a set

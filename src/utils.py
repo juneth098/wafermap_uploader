@@ -3,7 +3,8 @@ import hashlib
 import os
 import shutil
 import sys
-
+import difflib
+from html import escape
 
 if getattr(sys, 'frozen', False):
     # Running from PyInstaller EXE
@@ -65,8 +66,7 @@ def sha256_file(file_path):
 # -------------------------
 diff_file = os.path.join(BASE_DIR, "wafer_upload_diff.html")
 
-import difflib
-from html import escape
+
 
 def html_diff(first_lines, second_lines):
     """
@@ -122,8 +122,6 @@ def html_diff(first_lines, second_lines):
 
     return output_file
 
-
-
 # -------------------------
 # Misc helpers
 # -------------------------
@@ -145,3 +143,16 @@ def clean_dir(path):
                 os.remove(os.path.join(root, f))
             for d in dirs:
                 shutil.rmtree(os.path.join(root, d))
+
+
+def parse_soft_bins(soft_bin_str):
+    """
+    Convert CSV string to list of tuples [(0,"[]"), ...]
+    """
+    bins = []
+    for line in soft_bin_str.strip().splitlines():
+        if not line.strip():
+            continue
+        idx, desc = line.split(":", 1)
+        bins.append((int(idx.strip()), desc.strip().strip('"')))
+    return bins
