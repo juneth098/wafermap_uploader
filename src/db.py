@@ -164,4 +164,4 @@ def upsert_upload(session, upload_table, product, lot, wafer, stage,
             f"Wafer={wafer}, Stage={stage}: {e}"
         )
         sys.exit(1)  # stop script immediately
-        return False
+

@@ -5,13 +5,13 @@ from datetime import datetime
 import sys
 
 # Prepare stats for email
-to_list=[]
-to_list.append("juneth.viktor@ftdichip.com")  # For test environment
-#to_list.append("alamuri.venkateswararao@ftdichip.com")  # For test environment
-#to_list.append("ftdi_prodtest@ftdichip.com")  # replace with actual recipients
-#cc_list = ["manager@example.com"]  # optional
+notification_list=[]
+notification_list.append("juneth.viktor@ftdichip.com")  # For test environment
+#notification_list.append("alamuri.venkateswararao@ftdichip.com")  # For test environment
+#notification_list.append("ftdi_prodtest@ftdichip.com")  # replace with actual recipients
+#notification_CC_list = ["manager@example.com"]  # optional
 attachments = []  # optional, add file paths if needed
-
+to_list = notification_list
 
 def send_completion_mail(
     product,
@@ -20,7 +20,7 @@ def send_completion_mail(
     uploaded_wafers,
     db_update_count,
     ftp_dir,
-    to_list,
+    reciepient_list,
     cc_list=None,
     attachments=None,
     error=0,
@@ -106,7 +106,7 @@ def send_completion_mail(
         </html>
         """
 
-    mail.To = ";".join(to_list)
+    mail.To = ";".join(reciepient_list)
 
     if cc_list:
         mail.CC = ";".join(cc_list)
