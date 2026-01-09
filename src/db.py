@@ -119,34 +119,34 @@ def upsert_upload(session, upload_table, product, lot, wafer, stage,
         "stage": stage,
         "status": status,
         "upload_agent": agent,
-        "created_at" : now,
+        #"created_at" : now,
     }
 
     update_values = {
         "status": status,
         "upload_agent": agent,
-        "created_at": now,
+        #"created_at": now,
     }
 
+    where_clause = and_(
+        upload_table.c.Product == product,
+        upload_table.c.Lot_Number == lot_prefix,
+        upload_table.c.Wafer_Id == int(wafer),
+        upload_table.c.stage == stage,
+    )
 
     try:
-        existing = session.execute(
-            select(upload_table.c.id).where(
-                and_(
-                    upload_table.c.Product == product,
-                    upload_table.c.Lot_Number == lot_prefix,
-                    upload_table.c.Wafer_Id == int(wafer),
-                    upload_table.c.stage == stage
-                )
-            )
+        existing=session.execute(
+            select(1).where(where_clause)
         ).first()
 
         if existing:
             session.execute(
                 update(upload_table)
-                .where(upload_table.c.id == existing.id)
+                .where(where_clause)
                 .values(**update_values)
             )
+
             print(f"[DB] Updated: Lot={lot_prefix}, Wafer={wafer}, Stage={stage}")
         else:
             session.execute(

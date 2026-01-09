@@ -7,7 +7,13 @@ import threading
 import webbrowser
 import main
 import configs
-from configs import PRODUCT_CSV
+import sys
+from configs import PRODUCT_CSV, IS_PRODUCTION_MODE, IS_TEST_DEBUG_MODE
+
+if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
+    print("Wrong Debug Mode")
+    sys.exit(1)
+
 
 # -------------------------
 # CSV Loader
@@ -36,7 +42,10 @@ def open_config():
 # GUI
 # =========================
 root = tk.Tk()
-root.title(f"Wafermap_Uploader v{configs.script_ver}")
+if IS_PRODUCTION_MODE:
+    root.title(f"Wafermap_Uploader v{configs.script_ver}")
+if IS_TEST_DEBUG_MODE:
+    root.title(f"Wafermap_Uploader (TEST) v{configs.script_ver}")
 root.geometry("350x400")
 
 # Load products

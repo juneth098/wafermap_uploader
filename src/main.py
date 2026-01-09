@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 from sqlalchemy import select, and_
 
-from configs import NAS_MAP_DIR, TEMP_DL_DIR, ROOT_DIR, FTP_BASE_URL, FTP_USERPWD, FTP_HOST
+from configs import NAS_MAP_DIR, TEMP_DL_DIR, ROOT_DIR, FTP_BASE_URL, IS_TEST_DEBUG_MODE, IS_PRODUCTION_MODE
 from db import (
     get_factory_info,
     upsert_upload,
@@ -20,6 +20,10 @@ from ftp_client import FTPClient, MAX_FTP_RETRIES
 from utils import html_diff
 from mailer import send_completion_mail
 
+if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
+    print("Wrong Debug Mode")
+    sys.exit(1)
+
 
 def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
     """Run wafermap upload process for a given product."""
@@ -31,11 +35,12 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
     # ============================================================
     # Step 1: Clean working directories
     # ============================================================
-    for dir_to_clean in [TEMP_DL_DIR, ROOT_DIR]:
-        if os.path.exists(dir_to_clean):
-            print(f"[CLEANUP] Removing old files in {dir_to_clean}")
-            shutil.rmtree(dir_to_clean)
-        os.makedirs(dir_to_clean, exist_ok=True)
+    if IS_TEST_DEBUG_MODE:
+        for dir_to_clean in [TEMP_DL_DIR, ROOT_DIR]:
+            if os.path.exists(dir_to_clean):
+                print(f"[CLEANUP] Removing old files in {dir_to_clean}")
+                shutil.rmtree(dir_to_clean)
+            os.makedirs(dir_to_clean, exist_ok=True)
 
     # ============================================================
     # Step 2: Scan NAS ZIPs
@@ -69,14 +74,15 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
                     total_wafer += 1
                     lot_prefix = lot.split(".")[0]
 
+                    where_clause = and_(
+                        upload_table.c.Product == product,
+                        upload_table.c.Lot_Number == lot_prefix,
+                        upload_table.c.Wafer_Id == int(wafer),
+                        upload_table.c.stage == stage,
+                    )
+
                     record = db_session.execute(
-                        select(upload_table.c.id).where(
-                            and_(
-                                upload_table.c.Lot_Number.like(f"{lot_prefix}%"),
-                                upload_table.c.Wafer_Id == int(wafer),
-                                upload_table.c.stage == stage
-                            )
-                        )
+                        select(1).where(where_clause)
                     ).first()
 
                     if record:
@@ -228,13 +234,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
                     lot_prefix = lot.split(".")[0]
 
                     record = db_session.execute(
-                        select(upload_table.c.id).where(
-                            and_(
-                                upload_table.c.Lot_Number.like(f"{lot_prefix}%"),
-                                upload_table.c.Wafer_Id == int(wafer),
-                                upload_table.c.stage == stage
-                            )
-                        )
+                        select(1).where(where_clause)
                     ).first()
 
                     if record:
