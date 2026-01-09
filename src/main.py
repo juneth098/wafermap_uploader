@@ -330,9 +330,6 @@ def run_main(selected_products):
         fr_session.close()
         print("[ALL DONE] All products processed")
 
-
-
-
 if __name__ == "__main__":
     product_arg = sys.argv[1] if len(sys.argv) > 1 else ""
     run_main(product_arg)

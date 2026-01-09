@@ -11,15 +11,12 @@ def send_completion_mail(
     uploaded_wafers,
     db_update_count,
     ftp_dir,
-    recipient_list,
-    cc_list=None,
-    attachments=None,
+    recipient_list=[],
+    cc_list=[],
+    attachments=[],
     error=0,
     has_attach=False,
 ):
-    # Prepare stats for email
-    recipient_list = []
-    attachments = []  # optional, add file paths if needed
 
     #default recipient list
     recipient_list.append("juneth.viktor@ftdichip.com")  # For test environment
