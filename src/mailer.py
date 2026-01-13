@@ -3,6 +3,7 @@ import win32com.client
 import os
 from datetime import datetime
 import sys
+from configs import script_ver, IS_TEST_DEBUG_MODE, IS_PRODUCTION_MODE
 
 def send_completion_mail(
     product,
@@ -19,10 +20,18 @@ def send_completion_mail(
 ):
 
     #default recipient list
-    recipient_list.append("juneth.viktor@ftdichip.com")  # For test environment
-    # recipient_list.append("alamuri.venkateswararao@ftdichip.com")  # For test environment
-    # recipient_list.append("ftdi_prodtest@ftdichip.com")  # replace with actual recipients
-    # cc_list = ["manager@example.com"]  # optional
+    if IS_TEST_DEBUG_MODE or error !=0 or total_wafers == 0:
+    # production recipient list
+        recipient_list.append("juneth.viktor@ftdichip.com")  # For test environment
+        #cc_list.append("alamuri.venkateswararao@ftdichip.com")
+    # test recipient list
+    if IS_PRODUCTION_MODE and error == 0 and total_wafers == 0:
+        recipient_list.append("roger_tuan@umc.com")  # For test environment
+        recipient_list.append("julia_lee@umc.com")  # replace with actual recipients
+        cc_list.append("derrick.lau@ftdichip.com")
+        cc_list.append("sowjanya.reddy@ftdichip.com")
+        cc_list.append("juneth.viktor@ftdichip.com")
+        cc_list.append("alamuri.venkateswararao@ftdichip.com")
 
     #remove duplicates
     unique_lot = list(dict.fromkeys(lots))
@@ -72,7 +81,7 @@ def send_completion_mail(
         <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
         <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
         <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
-        <tr><td><b>Upload Agent</b></td><td>:</td><td>gtk_to_umc</td></tr>
+        <tr><td><b>Upload Agent</b></td><td>:</td><td>wafermap_uploader v{script_ver}</td></tr>
         <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
         </table>
 
@@ -95,7 +104,7 @@ def send_completion_mail(
         <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
         <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
         <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
-        <tr><td><b>Upload Agent</b></td><td>:</td><td>gtk_to_umc</td></tr>
+        <tr><td><b>Upload Agent</b></td><td>:</td><td>wafermap_uploader v{script_ver}</td></tr>
         <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
         </table>
 

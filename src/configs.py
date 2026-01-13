@@ -43,7 +43,7 @@ PRODUCT_TO_CHECK.append("FT260-B")    #Target2
 
 #Path for the final wafermap output in UMC-format
 if IS_PRODUCTION_MODE:
-    ROOT_DIR = r"D:\UMC_log_Processing\files_for_FTP_processing\new_scheme_2018\FT232RV2"
+    ROOT_DIR = fr"D:\UMC_log_Processing\files_for_FTP_processing\wmu_v{script_ver}"
 if IS_TEST_DEBUG_MODE:
     ROOT_DIR = os.path.join(EXE_DIR, "converted_umc")
 #Path for the raw wafer map to be converted
@@ -56,8 +56,10 @@ if IS_TEST_DEBUG_MODE:
 
 
 #Temporary path for processing the files
-#TEMP_DL_DIR = r"D:\UMC_log_Processing\files_for_FTP_processing\new_scheme_2018\temp_dl_area"
-TEMP_DL_DIR = os.path.join(EXE_DIR, "temp_dl")
+if IS_PRODUCTION_MODE:
+    TEMP_DL_DIR = fr"D:\UMC_log_Processing\files_for_FTP_processing\wmu_v{script_ver}\temp_dl_area"
+if IS_TEST_DEBUG_MODE:
+    TEMP_DL_DIR = os.path.join(EXE_DIR, "temp_dl")
 
 
 # -------------------------

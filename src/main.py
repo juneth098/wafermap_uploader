@@ -17,7 +17,7 @@ from db import (
 from scanner import scan_maps
 from umc_writer import process_wafer
 from ftp_client import FTPClient, MAX_FTP_RETRIES
-from utils import html_diff
+from utils import html_diff, BASE_DIR
 from mailer import send_completion_mail
 
 if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
@@ -26,6 +26,8 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
 
 
 def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
+    timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
     """Run wafermap upload process for a given product."""
     if not PRODUCT_TO_CHECK:
         print("[ERROR] No product specified")
@@ -58,6 +60,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
     db_update_count = 0
     error_count = 0
     diff_file_path = None
+    upload_file_path = None
 
     try:
         for zip_file in os.listdir(NAS_MAP_DIR):
@@ -180,6 +183,14 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
                                 zip_timestamp=zip_timestamp,
                                 factory_info=factory_info,
                             )
+
+                            if umc_file:
+                                upload_file_path = os.path.join(BASE_DIR, f"files_uploaded_{timestamp}.txt")
+
+                                with open(upload_file_path, "a", encoding="utf-8") as f:
+                                    f.write(os.path.basename(umc_file) + "\n")
+
+
                             lots.append(lot)
                            # ============================
                            # FTP Upload using single connection
@@ -270,6 +281,10 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
         Not uploaded: {not_uploaded_count}
         """
 
+        if total_wafer != uploaded_count:
+            error_count += 1
+            print("Mismatch found in total_wafer and uploaded_count")
+
         # Append each line separately
         for line in wafer_summary.strip().split("\n"):
             second_scan_line.append(line)
@@ -284,6 +299,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
     # ============================================================
     # Step 4: Send email
     # ============================================================
+
     send_completion_mail(
         product=PRODUCT_TO_CHECK,
         lots=lots,
@@ -293,9 +309,10 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
         ftp_dir=FTP_BASE_URL,
         error=error_count,
         has_attach=len(not_uploaded_wafermaps) != 0,
-        attachments = diff_file_path
+        attachments = [diff_file_path,upload_file_path],
     )
-    print(f"[DONE] Process completed for {PRODUCT_TO_CHECK}")
+
+
 
     not_uploaded_wafermaps.clear()
     lots.clear()
