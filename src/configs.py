@@ -21,8 +21,8 @@ script_ver = "1"
 
 
 #Debug option
-IS_TEST_DEBUG_MODE = True      #Enable only during Test
-IS_PRODUCTION_MODE = False     #Enable only for Production Release (Will work only in actual Machine)
+IS_TEST_DEBUG_MODE = False      #Enable only during Test
+IS_PRODUCTION_MODE = True     #Enable only for Production Release (Will work only in actual Machine)
 
 if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
     print("Wrong Debug Mode")
