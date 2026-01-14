@@ -33,9 +33,11 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
 # -------------------------
 PRODUCT_TO_CHECK = []
 #PRODUCT_TO_CHECK = ""
+PRODUCT_TO_CHECK.append("FT1234-X")   #Test Product
 PRODUCT_TO_CHECK.append("FT4232H-C")  #Reference Product
 PRODUCT_TO_CHECK.append("FT233H-B")   #Target1
 PRODUCT_TO_CHECK.append("FT260-B")    #Target2
+
 
 # -------------------------
 # PATHS
@@ -44,21 +46,22 @@ PRODUCT_TO_CHECK.append("FT260-B")    #Target2
 #Path for the final wafermap output in UMC-format
 if IS_PRODUCTION_MODE:
     ROOT_DIR = fr"D:\UMC_log_Processing\files_for_FTP_processing\wmu_v{script_ver}"
-if IS_TEST_DEBUG_MODE:
+elif IS_TEST_DEBUG_MODE:
     ROOT_DIR = os.path.join(EXE_DIR, "converted_umc")
+
 #Path for the raw wafer map to be converted
 #NAS_MAP_DIR = r"M:\DOWNLOADED\CR_Micro\PROBE\MAP"      # REFERENCE contains wafermap from the OSAT
 if IS_PRODUCTION_MODE:
     NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
-if IS_TEST_DEBUG_MODE:
+elif IS_TEST_DEBUG_MODE:
     NAS_MAP_DIR = os.path.join(EXE_DIR, "raw_wafer_map")# TEST Environment
-    #NAS_MAP_DIR = r"./raw_wafer_map"  # TEST Environment
+    #NAS_MAP_DIR = r"Z:\test_logfiles\DOWNLOADED\GREATEK\MAP"  # TEST Environment
 
 
 #Temporary path for processing the files
 if IS_PRODUCTION_MODE:
     TEMP_DL_DIR = fr"D:\UMC_log_Processing\files_for_FTP_processing\wmu_v{script_ver}\temp_dl_area"
-if IS_TEST_DEBUG_MODE:
+elif IS_TEST_DEBUG_MODE:
     TEMP_DL_DIR = os.path.join(EXE_DIR, "temp_dl")
 
 
@@ -72,7 +75,7 @@ if not DB_URI:
 #DB Status table
 if IS_PRODUCTION_MODE:
     DB_UPLOAD_TABLE = "umc_uploaded_wafers.wafers_uploaded"                # PRODUCTION
-if IS_TEST_DEBUG_MODE:
+elif IS_TEST_DEBUG_MODE:
     DB_UPLOAD_TABLE = "umc_uploaded_wafers.wafers_uploaded_for_test_script" # TEST Environment
 #DB Factory reports
 DB_FACT_REPORT_TABLE = "factory_reports.gtk_cp_report_sg"               #
@@ -90,7 +93,7 @@ FTP_HOST = "ftp1.umc.com"
 #FTP destination path
 if IS_PRODUCTION_MODE:
     FTP_BASE_URL = "ftp://tftdi@ftp1.umc.com/CP_S_UMC"               # PRODUCTION
-if IS_TEST_DEBUG_MODE:
+elif IS_TEST_DEBUG_MODE:
     FTP_BASE_URL = "ftp://tftdi@ftp1.umc.com/CP_S_UMC/test_dir_geoff" # TEST Environment
 
 
