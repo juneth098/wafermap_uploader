@@ -88,6 +88,7 @@ def get_factory_info(session, lot, wafer, product):
     else:
        machine = ""
        program = ""
+       operator = ""
        operator_id = ""
 
     return {
