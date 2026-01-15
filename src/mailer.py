@@ -20,10 +20,8 @@ def send_completion_mail(
 ):
 
     #default recipient list
-
-    if IS_TEST_DEBUG_MODE or error !=0 or total_wafers == 0: #if has error and blank wafer
-        # For test environment
-        recipient_list.append("juneth.viktor@ftdichip.com")
+    recipient_list = []
+    cc_list = []
 
     if IS_PRODUCTION_MODE and error == 0 and total_wafers != 0: # no error and wafer to upload is not 0
         recipient_list.append("roger_tuan@umc.com")  # For test environment
@@ -33,6 +31,9 @@ def send_completion_mail(
         cc_list.append("juneth.viktor@ftdichip.com")
         cc_list.append("alamuri.venkateswararao@ftdichip.com")
 
+    else: #if has error and blank wafer
+        # For test environment
+        recipient_list.append("juneth.viktor@ftdichip.com")
     #remove duplicates
     unique_lot = list(dict.fromkeys(lots))
 
@@ -58,7 +59,7 @@ def send_completion_mail(
         <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
         <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
         <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
-        <tr><td><b>Upload Agent</b></td><td>:</td><td>gtk_to_umc</td></tr>
+        <tr><td><b>Upload Agent</b></td><td>:</td><td>wmu_v{script_ver}</td></tr>
         <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
         </table>
     
@@ -81,7 +82,7 @@ def send_completion_mail(
         <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
         <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
         <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
-        <tr><td><b>Upload Agent</b></td><td>:</td><td>wafermap_uploader v{script_ver}</td></tr>
+        <tr><td><b>Upload Agent</b></td><td>:</td><td>wmu_v{script_ver}</td></tr>
         <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
         </table>
 
@@ -104,7 +105,7 @@ def send_completion_mail(
         <tr><td><b>FTP: Uploaded Map</b></td><td>:</td><td>{uploaded_wafers}</td></tr>
         <tr><td><b>DB: Updated Rows</b></td><td>:</td><td>{db_update_count}</td></tr>
         <tr><td><b>FTP Directory</b></td><td>:</td><td>{ftp_dir}</td></tr>
-        <tr><td><b>Upload Agent</b></td><td>:</td><td>wafermap_uploader v{script_ver}</td></tr>
+        <tr><td><b>Upload Agent</b></td><td>:</td><td>wmu_v{script_ver}</td></tr>
         <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
         </table>
 
@@ -135,4 +136,5 @@ def send_completion_mail(
     print(f"{mail.Body}")
     mail.Send()
     print("[MAIL] Outlook notification sent")
+
 

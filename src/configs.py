@@ -33,7 +33,7 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
 # -------------------------
 PRODUCT_TO_CHECK = []
 #PRODUCT_TO_CHECK = ""
-PRODUCT_TO_CHECK.append("FT1234-X")   #Test Product
+#PRODUCT_TO_CHECK.append("FT1234-X")   #Test Product
 PRODUCT_TO_CHECK.append("FT4232H-C")  #Reference Product
 PRODUCT_TO_CHECK.append("FT233H-B")   #Target1
 PRODUCT_TO_CHECK.append("FT260-B")    #Target2

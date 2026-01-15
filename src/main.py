@@ -118,7 +118,8 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
         # ============================================================
         # Summary
         # ============================================================
-        print(wafer_results_tbl)
+        for line in first_scan_line:
+            print(line)
         wafer_summary = f"""
         Upload status summary for {PRODUCT_TO_CHECK}
         Total wafers scanned: {total_wafer}
@@ -235,81 +236,75 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
 
 
     #remove Second Scan to speed up the process
-    #not_uploaded_count != 0:
+    if not_uploaded_count != 0:
+        total_wafer = 0
+        uploaded_count = 0
+        not_uploaded_count = 0
+        second_scan_line=[]
 
-    #total_wafer = 0
-    #uploaded_count = 0
-    #not_uploaded_count = 0
+        print("[SCAN] Scanning the 2nd time...")
+        for zip_file in os.listdir(NAS_MAP_DIR):
+            if not zip_file.lower().endswith(".zip"):
+                continue
 
-    #second_scan_line=[]
-    #print("[SCAN] Scanning the 2nd time...")
-    #for zip_file in os.listdir(NAS_MAP_DIR):
-    #    if not zip_file.lower().endswith(".zip"):
-    #        continue
+            zip_path = os.path.join(NAS_MAP_DIR, zip_file)
 
-    #    try:
-    #        for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(NAS_MAP_DIR):
-    #            if os.path.basename(zip_path_inner) != zip_file:
-    #                continue
-    #            if product != PRODUCT_TO_CHECK:
-    #                continue
+            try:
+                for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path):
+                    if os.path.basename(zip_path_inner) != zip_file:
+                        continue
+                    if product != PRODUCT_TO_CHECK:
+                        break
+                    total_wafer += 1
+                    lot_prefix = lot.split(".")[0]
+                    record = db_session.execute(
+                        select(1).where(where_clause)
+                    ).first()
+                    if record:
+                        uploaded_count += 1
+                        status = "UPLOADED"
+                    else:
+                        not_uploaded_count += 1
+                        status = "NOT_UPLOADED"
+                        not_uploaded_wafermaps.append({
+                            "zip_file": zip_file,
+                            "txt_file": txt_file,
+                            "lot": lot_prefix,
+                            "wafer": wafer,
+                            "stage": stage,
+                            "product": product,
+                        })
+                    wafer_results_tbl = f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}"
+                    second_scan_line.append(wafer_results_tbl)
+            except zipfile.BadZipFile:
+                error_count += 1
+                print("Bad ZIP file, skipping:", zip_file)
+                sys.exit(1)  # stop script immediately
+        # ============================================================
+        # Summary
+        # ============================================================
+        for line in second_scan_line:
+            print(line)
+        wafer_summary = f"""
+        Upload status summary for {PRODUCT_TO_CHECK}
+        Total wafers scanned: {total_wafer}
+        Uploaded: {uploaded_count}
+        Not uploaded: {not_uploaded_count}
+        """
+        if total_wafer != uploaded_count:
+            error_count += 1
+            print("Mismatch found in total_wafer and uploaded_count")
+        # Append each line separately
+        for line in wafer_summary.strip().split("\n"):
+            second_scan_line.append(line)
 
-    #            total_wafer += 1
-    #            lot_prefix = lot.split(".")[0]
-
-    #            record = db_session.execute(
-    #                select(1).where(where_clause)
-    #            ).first()
-
-    #            if record:
-    #                uploaded_count += 1
-    #                status = "UPLOADED"
-    #            else:
-    #                not_uploaded_count += 1
-    #                status = "NOT_UPLOADED"
-    #                not_uploaded_wafermaps.append({
-    #                    "zip_file": zip_file,
-    #                    "txt_file": txt_file,
-    #                    "lot": lot_prefix,
-    #                    "wafer": wafer,
-    #                    "stage": stage,
-    #                    "product": product,
-    #                })
-    #            wafer_results_tbl = f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}"
-    #            print(wafer_results_tbl)
-    #            second_scan_line.append(wafer_results_tbl)
-
-    #    except zipfile.BadZipFile:
-    #        error_count += 1
-    #        print("Bad ZIP file, skipping:", zip_file)
-    #        sys.exit(1)  # stop script immediately
-
-    #    # ============================================================
-    #    # Summary
-    #    # ============================================================
-    #    wafer_summary = f"""
-    #    Upload status summary for {PRODUCT_TO_CHECK}
-    #    Total wafers scanned: {total_wafer}
-    #    Uploaded: {uploaded_count}
-    #    Not uploaded: {not_uploaded_count}
-    #    """
-#
-    #    if total_wafer != uploaded_count:
-    #        error_count += 1
-    #        print("Mismatch found in total_wafer and uploaded_count")
-#
-    #    # Append each line separately
-    #    for line in wafer_summary.strip().split("\n"):
-    #        second_scan_line.append(line)
-#
-    #    # ============================================================
-    #    # Step 12: HTML Diff (Highlight newly uploaded wafers)
-    #    # ============================================================
-#
-    #    diff_file_path = html_diff(first_scan_line, second_scan_line)
-    #    print("[HTML DIFF] generating diff...", diff_file_path)
-    #    first_scan_line.clear()
-    #    second_scan_line.clear()
+        # ============================================================
+        # Step 12: HTML Diff (Highlight newly uploaded wafers)
+        # ============================================================
+        diff_file_path = html_diff(first_scan_line, second_scan_line)
+        print("[HTML DIFF] generating diff...", diff_file_path)
+        first_scan_line.clear()
+        second_scan_line.clear()
 
     # ============================================================
     # Step 4: Send email
