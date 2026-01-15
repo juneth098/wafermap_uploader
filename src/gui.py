@@ -114,7 +114,7 @@ def start_run():
         try:
             pythoncom.CoInitialize()  # init COM
             for product in selected_products:
-                main.run_main(product, skip_var.get())  # <- call function directly
+                main.run_main(product)  # <- call function directly
             root.after(0, on_run_complete)
         except Exception as e:
             err_msg = str(e)
@@ -181,10 +181,6 @@ def show_about():
 
     tk.Button(about_win, text="Close", command=about_win.destroy).pack(pady=10)
 
-
-skip_var = tk.BooleanVar(value=False)  # default: skip enabled
-skip_checkbox = tk.Checkbutton(root, text="Skip previous ZIPs", variable=skip_var)
-skip_checkbox.pack(pady=10)
 
 about_btn = tk.Button(root, text="About", command=show_about)
 about_btn.pack(pady=5)

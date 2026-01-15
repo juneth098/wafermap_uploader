@@ -20,12 +20,12 @@ def send_completion_mail(
 ):
 
     #default recipient list
-    if IS_TEST_DEBUG_MODE or error !=0 or total_wafers == 0:
-    # production recipient list
-        recipient_list.append("juneth.viktor@ftdichip.com")  # For test environment
-        #cc_list.append("alamuri.venkateswararao@ftdichip.com")
-    # test recipient list
-    if IS_PRODUCTION_MODE and error == 0 and total_wafers == 0:
+
+    if IS_TEST_DEBUG_MODE or error !=0 or total_wafers == 0: #if has error and blank wafer
+        # For test environment
+        recipient_list.append("juneth.viktor@ftdichip.com")
+
+    if IS_PRODUCTION_MODE and error == 0 and total_wafers != 0: # no error and wafer to upload is not 0
         recipient_list.append("roger_tuan@umc.com")  # For test environment
         recipient_list.append("julia_lee@umc.com")  # replace with actual recipients
         cc_list.append("derrick.lau@ftdichip.com")

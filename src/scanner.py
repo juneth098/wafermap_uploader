@@ -68,9 +68,9 @@ def extract_wafer_from_txt(wafer_id):
     return wafer_part
 
 
-def scan_maps(nas_dir):
+def scan_maps(zip_path):
     """
-    Scan NAS directory for ZIP files.
+    Scan a single ZIP file.
 
     Yields:
         zip_path,
@@ -80,60 +80,49 @@ def scan_maps(nas_dir):
         stage,
         product
     """
-    for root, _, files in os.walk(nas_dir):
-        for fname in files:
-            if not fname.lower().endswith(".zip"):
-                continue
 
-            zip_path = os.path.join(root, fname)
+    fname = os.path.basename(zip_path)
 
-            # -------------------------
-            # LOT and STAGE from ZIP
-            # -------------------------
-            lot = extract_lot_from_zip(fname)
-            stage = extract_stage_from_zip(fname)
-
-            try:
-                with zipfile.ZipFile(zip_path, "r") as zf:
-                    for info in zf.infolist():
-                        if not info.filename.lower().endswith(".txt"):
-                            continue
-
-                        with zf.open(info) as f:
-                            lines = f.read().decode("utf-8", errors="ignore").splitlines()
-
-                        txt = {}
-                        for line in lines:
-                            if "=" in line:
-                                k, v = line.split("=", 1)
-                                txt[k.strip()] = v.strip()
-
-                        device_name = txt.get("DEVICE_NAME")
-                        wafer_id = txt.get("WAFER_ID")
-
-                        # -------------------------
-                        # Map device to product
-                        # -------------------------
-                        product = DEVICE_TO_PRODUCT.get(device_name)
-                        if not product:
-                            continue
-
-                        # -------------------------
-                        # Wafer number
-                        # -------------------------
-                        wafer = extract_wafer_from_txt(wafer_id)
-                        if wafer is None:
-                            continue
-
-                        yield (
-                            zip_path,
-                            info.filename,
-                            lot,
-                            wafer,
-                            stage,
-                            product,
-                        )
-
-            except zipfile.BadZipFile:
-                print(f"[SCANNER] Warning: Bad ZIP skipped: {zip_path}")
-                sys.exit(1)  # stop script immediately
+    # -------------------------
+    # LOT and STAGE from ZIP
+    # -------------------------
+    lot = extract_lot_from_zip(fname)
+    stage = extract_stage_from_zip(fname)
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            for info in zf.infolist():
+                if not info.filename.lower().endswith(".txt"):
+                    continue
+                with zf.open(info) as f:
+                    lines = f.read().decode("utf-8", errors="ignore").splitlines()
+                txt = {}
+                for line in lines:
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        txt[k.strip()] = v.strip()
+                device_name = txt.get("DEVICE_NAME")
+                wafer_id = txt.get("WAFER_ID")
+                # -------------------------
+                # Map device to product
+                # -------------------------
+                product = DEVICE_TO_PRODUCT.get(device_name)
+                if not product:
+                    print(f"[SCAN] Product {device_name} not supported in product_config")
+                    break
+                # -------------------------
+                # Wafer number
+                # -------------------------
+                wafer = extract_wafer_from_txt(wafer_id)
+                if wafer is None:
+                    continue
+                yield (
+                    zip_path,
+                    info.filename,
+                    lot,
+                    wafer,
+                    stage,
+                    product,
+                )
+    except zipfile.BadZipFile:
+        print(f"[SCANNER] Warning: Bad ZIP skipped: {zip_path}")
+        sys.exit(1)  # stop script immediately
