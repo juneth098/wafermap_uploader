@@ -46,11 +46,11 @@ def send_completion_mail(
 
 
     if error == 0:
-        mail.Subject = f"GTK → UMC Upload Completed | {product}"
+        mail.Subject = f"UMC Wafermap Upload Completed | {product}"
         mail.HTMLBody = f"""
         <html>
         <body style="font-family:Calibri; font-size:11pt;">
-        <h3>GTK to UMC processing completed successfully</h3>
+        <h3>UMC Wafermap processing completed successfully</h3>
     
         <table cellpadding="4">
         <tr><td><b>Product</b></td><td>:</td><td>{product}</td></tr>
@@ -69,11 +69,11 @@ def send_completion_mail(
         """
 
     if error !=0: #error found
-        mail.Subject = f"GTK → UMC Upload FAIL | {product}"
+        mail.Subject = f"UMC Wafermap Upload FAIL | {product}"
         mail.HTMLBody = f"""
         <html>
         <body style="font-family:Calibri; font-size:11pt;">
-         <h3 style="color:red;">GTK to UMC encountered {error} error/s</h3>
+         <h3 style="color:red;">UMC Wafermap encountered {error} error/s</h3>
 
         <table cellpadding="4">
         <tr><td><b>Product</b></td><td>:</td><td>{product}</td></tr>
@@ -92,7 +92,7 @@ def send_completion_mail(
         """
 
     if total_wafers ==0: #0 wafers
-        mail.Subject = f"GTK → UMC Nothing to upload | {product}"
+        mail.Subject = f"UMC Wafermap: Nothing to upload | {product}"
         mail.HTMLBody = f"""
         <html>
         <body style="font-family:Calibri; font-size:11pt;">
