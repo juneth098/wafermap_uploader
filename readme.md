@@ -19,6 +19,17 @@ This tool simplifies wafer map processing and automates upload workflows for sem
 
 ---
 
+
+## 🔹 Supported Products
+
+- FT4232H-C 
+- FT233H-B   
+- FT260-B   
+- FT4233H-C  
+- FT232RV2-C
+
+---
+
 ## 💾 Download ZIP
 
 The latest Zip can be downloaded from the **GitHub Releases** page:
@@ -53,10 +64,8 @@ FTP_USERPWD=user:password@abc123
 ````
 3. **Run `WaferMapUploader.exe`.**  
 4. Click `Select Product` dropdown and choose product then click **➕ button** to add.  
-5. **To Remove**, Highlight product in the `listbox` then click  **➖ button**.  
-6. **(Optional) Update configurations** by clicking the `Configs` **button**:  
-   - Configure fields such as `PRODUCT`, `DEVICE_NAME`, `SUBCON`, `TESTER`, `TEST_PROGRAM`, `LOAD_BOARD`, `PROBE_CARD`, `SOFT_BINS`.  
-7. **Click `Run`** to process the wafer maps:  
+5. **To Remove**, Highlight product in the `listbox` then click  **➖ button**.
+6. **Click `Run`** to process the wafer maps:  
    - Converts the wafer maps into **UMC standard format**.  
    - Uploads the converted files to the **FTP server**.  
    - Updates the **status in the database**.   
@@ -91,9 +100,7 @@ python src/gui.py
 ```
 4. Click `Select Product` dropdown and choose product then click **➕ button** to add.  
 5. **To Remove**, Highlight product in the `listbox` then click  **➖ button**.  
-6. **(Optional) Update configurations** by clicking the `Configs` **button**:  
-   - Configure fields such as `PRODUCT`, `DEVICE_NAME`, `SUBCON`, `TESTER`, `TEST_PROGRAM`, `LOAD_BOARD`, `PROBE_CARD`, `SOFT_BINS`.  
-7. **Click `Run`** to process the wafer maps:  
+6. **Click `Run`** to process the wafer maps:  
    - Converts the wafer maps into **UMC standard format**.  
    - Uploads the converted files to the **FTP server**.  
    - Updates the **status in the database**.   

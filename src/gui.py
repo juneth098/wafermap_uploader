@@ -139,7 +139,7 @@ def on_run_error(msg):
 # -------------------------
 # Buttons
 # -------------------------
-tk.Button(root, text="Edit Config (CSV)", command=open_config).pack(pady=5)
+#tk.Button(root, text="Edit Config (CSV)", command=open_config).pack(pady=5)
 
 run_btn = tk.Button(
     root,

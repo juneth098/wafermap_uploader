@@ -68,7 +68,7 @@ def extract_wafer_from_txt(wafer_id):
     return wafer_part
 
 
-def scan_maps(zip_path):
+def scan_maps(zip_path, unsupported_log = None):
     """
     Scan a single ZIP file.
 
@@ -88,6 +88,9 @@ def scan_maps(zip_path):
     # -------------------------
     lot = extract_lot_from_zip(fname)
     stage = extract_stage_from_zip(fname)
+
+    unsupported_devices = set()
+
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
             for info in zf.infolist():
@@ -107,7 +110,8 @@ def scan_maps(zip_path):
                 # -------------------------
                 product = DEVICE_TO_PRODUCT.get(device_name)
                 if not product:
-                    print(f"[SCAN] Product {device_name} not supported in product_config")
+                    unsupported_devices.add(device_name)
+                    #print(f"[SCAN] Product {device_name} not supported in product_config")
                     break
                 # -------------------------
                 # Wafer number
@@ -126,3 +130,13 @@ def scan_maps(zip_path):
     except zipfile.BadZipFile:
         print(f"[SCANNER] Warning: Bad ZIP skipped: {zip_path}")
         sys.exit(1)  # stop script immediately
+
+    # -------------------------
+    # Write unsupported devices
+    # -------------------------
+
+    if unsupported_devices and unsupported_log:
+        with open(unsupported_log, "a", encoding="utf-8") as f:
+            for dev in sorted(unsupported_devices):
+                #print("[SCANNER] Unsupported devices detected:", dev, unsupported_log)
+                f.write(f"{dev}\n")

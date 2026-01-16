@@ -2,12 +2,11 @@
 import os
 import shutil
 import zipfile
-import csv
 import sys
 from datetime import datetime
 from sqlalchemy import select, and_
 
-from configs import NAS_MAP_DIR, TEMP_DL_DIR, ROOT_DIR, FTP_BASE_URL, IS_TEST_DEBUG_MODE, IS_PRODUCTION_MODE
+from configs import PRODUCT_CONFIG, TEMP_DL_DIR, ROOT_DIR, FTP_BASE_URL, IS_TEST_DEBUG_MODE, IS_PRODUCTION_MODE, set_nas_dir
 from db import (
     get_factory_info,
     upsert_upload,
@@ -18,7 +17,7 @@ from db import (
 from scanner import scan_maps
 from umc_writer import process_wafer
 from ftp_client import FTPClient, MAX_FTP_RETRIES
-from utils import html_diff, EXE_DIR
+from utils import html_diff, EXE_DIR, cleanup_duplicate, safe_copy, wait_until_stable
 from mailer import send_completion_mail
 
 if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
@@ -26,7 +25,7 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
     sys.exit(1)
 
 
-def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
+def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsupported_log_path):
     timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
     """Run wafermap upload process for a given product."""
@@ -37,11 +36,14 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
     # ============================================================
     # Step 1: Clean working directories
     # ============================================================
-    if IS_TEST_DEBUG_MODE:
-        for dir_to_clean in [TEMP_DL_DIR, ROOT_DIR]:
-            if os.path.exists(dir_to_clean):
+
+    for dir_to_clean in [TEMP_DL_DIR, ROOT_DIR]:
+        if os.path.exists(dir_to_clean):
+            if IS_TEST_DEBUG_MODE:
                 print(f"[CLEANUP] Removing old files in {dir_to_clean}")
                 shutil.rmtree(dir_to_clean)
+        else:
+            print(f"Creating {dir_to_clean}")
             os.makedirs(dir_to_clean, exist_ok=True)
 
     # ============================================================
@@ -61,181 +63,189 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
     diff_file_path = None
     upload_file_path = None
 
+    # -------------------------
+    # GET Product Info from CSV
+    # -------------------------
+    product_info = PRODUCT_CONFIG.get(PRODUCT_TO_CHECK)
+    test_factory = product_info.get("subcon")
+    NAS_MAP_DIR = set_nas_dir(test_factory)
 
-    try:
-        print(f"Checking ZIP Files from: {NAS_MAP_DIR}" )
-        for zip_file in os.listdir(NAS_MAP_DIR):    #Every ZIP
-            if not zip_file.lower().endswith(".zip"):
+
+
+    print(f"Checking ZIP Files from: {NAS_MAP_DIR}" )
+    for zip_file in os.listdir(NAS_MAP_DIR):    #Every ZIP
+        if not zip_file.lower().endswith(".zip"):
+            continue
+        zip_path = os.path.join(NAS_MAP_DIR, zip_file)
+        try:
+            print("Scanning files from zip:", zip_file)
+            for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path, unsupported_log_path): #Every Wafer Map
+                if os.path.basename(zip_path_inner) != zip_file:
+                    continue
+                if product != PRODUCT_TO_CHECK:
+                    #print(f"Skip product {product}")
+                    break
+                total_wafer += 1
+                lot_prefix = lot.split(".")[0]
+                where_clause = and_(
+                    upload_table.c.Product == product,
+                    upload_table.c.Lot_Number == lot_prefix,
+                    upload_table.c.Wafer_Id == int(wafer),
+                    upload_table.c.stage == stage,
+                )
+                #print("Checking Records from database")
+                record = db_session.execute(
+                    select(1).where(where_clause)
+                ).first()
+                if record:
+                    uploaded_count += 1
+                    status = "UPLOADED"
+                else:
+                    not_uploaded_count += 1
+                    status = "NOT_UPLOADED"
+                    not_uploaded_wafermaps.append({
+                        "zip_file": zip_file,
+                        "txt_file": txt_file,
+                        "lot": lot_prefix,
+                        "wafer": wafer,
+                        "stage": stage,
+                        "product": product,
+                    })
+                wafer_results_tbl = f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}"
+                first_scan_line.append(wafer_results_tbl)
+        except zipfile.BadZipFile:
+                error_count += 1
+                print("Bad ZIP file, skipping:", zip_file)
+                sys.exit(1)
+    # ============================================================
+    # Summary
+    # ============================================================
+    for line in first_scan_line:
+        print(line)
+    wafer_summary = f"""
+    Upload status summary for {PRODUCT_TO_CHECK}
+    Total wafers scanned: {total_wafer}
+    Uploaded: {uploaded_count}
+    Not uploaded: {not_uploaded_count}
+    """
+    print(wafer_summary)
+    # Append each line separately
+    for line in wafer_summary.strip().split("\n"):
+        first_scan_line.append(line)
+    # ============================================================
+    # Step 4: Copy ZIPs that contain NOT_UPLOADED wafermaps
+    # ============================================================
+    zip_to_process = None
+    if not not_uploaded_wafermaps:
+        print("\nAll wafermaps are already UPLOADED.")
+    else:
+        zip_to_process = {w["zip_file"] for w in not_uploaded_wafermaps}
+
+        # -----------------------------
+        # Copy loop using wait_until_stable
+        # -----------------------------
+        for zip_file in zip_to_process:
+            src = os.path.join(NAS_MAP_DIR, zip_file)
+            dst = os.path.join(TEMP_DL_DIR, zip_file)
+
+            # Skip files that do not exist yet
+            if not os.path.exists(src):
+                print(f"[SKIP] Source file not found: {zip_file}")
                 continue
 
-            zip_path = os.path.join(NAS_MAP_DIR, zip_file)
+            # Wait until file size is stable
+            if not wait_until_stable(src, checks=3, delay=1):
+                print(f"[WAIT] File still copying, skipping for now: {zip_file}")
+                continue
 
+            # Copy safely
+            safe_copy(src, dst)
+            print(f"[COPY] {zip_file} copied successfully")
+
+        #for zip_file in zip_to_process:
+        #    shutil.copy2(
+        #        os.path.join(NAS_MAP_DIR, zip_file),
+        #        os.path.join(TEMP_DL_DIR, zip_file),
+        #    )
+
+        print(f"\nProcessing {len(zip_to_process)} ZIPs containing {len(not_uploaded_wafermaps)} NOT_UPLOADED wafermaps...")
+       # ========================================================
+       # Step 5: Process only NOT_UPLOADED wafermaps
+       # ========================================================
+        for item_count, item in enumerate(not_uploaded_wafermaps, start=1):
+            zip_file = item["zip_file"]
+            txt_name = os.path.basename(item["txt_file"])
+            lot = item["lot"]
+            wafer = item["wafer"]
+            stage = item["stage"]
+            print(f"\n----- {item_count}/{len(not_uploaded_wafermaps)} -----")
+            zip_path = os.path.join(TEMP_DL_DIR, zip_file)
+            parts = zip_file.replace(".map.zip", "").split("_")
+            zip_timestamp = (
+                datetime.strptime("_".join(parts[2:8]), "%Y_%m_%d_%H_%M_%S")
+                .strftime("%Y-%m-%d %H:%M:%S")
+                if len(parts) >= 8
+                else ""
+            )
             try:
-                print("Scanning files from zip:", zip_file)
-                for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path): #Every Wafer Map
-                    if os.path.basename(zip_path_inner) != zip_file:
-                        continue
-                    if product != PRODUCT_TO_CHECK:
-                        print(f"Skip product {product}")
-                        break
-
-                    total_wafer += 1
-                    lot_prefix = lot.split(".")[0]
-
-                    where_clause = and_(
-                        upload_table.c.Product == product,
-                        upload_table.c.Lot_Number == lot_prefix,
-                        upload_table.c.Wafer_Id == int(wafer),
-                        upload_table.c.stage == stage,
-                    )
-                    print("Checking Records from database")
-                    record = db_session.execute(
-                        select(1).where(where_clause)
-                    ).first()
-
-                    if record:
-                        uploaded_count += 1
-                        status = "UPLOADED"
-                    else:
-                        not_uploaded_count += 1
-                        status = "NOT_UPLOADED"
-                        not_uploaded_wafermaps.append({
-                            "zip_file": zip_file,
-                            "txt_file": txt_file,
-                            "lot": lot_prefix,
-                            "wafer": wafer,
-                            "stage": stage,
-                            "product": product,
-                        })
-                    wafer_results_tbl = f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}"
-                    first_scan_line.append(wafer_results_tbl)
-
-            except zipfile.BadZipFile:
-                    error_count += 1
-                    print("Bad ZIP file, skipping:", zip_file)
-                    sys.exit(1)
-
-        # ============================================================
-        # Summary
-        # ============================================================
-        for line in first_scan_line:
-            print(line)
-        wafer_summary = f"""
-        Upload status summary for {PRODUCT_TO_CHECK}
-        Total wafers scanned: {total_wafer}
-        Uploaded: {uploaded_count}
-        Not uploaded: {not_uploaded_count}
-        """
-        # Append each line separately
-        for line in wafer_summary.strip().split("\n"):
-            first_scan_line.append(line)
-        # ============================================================
-        # Step 4: Copy ZIPs that contain NOT_UPLOADED wafermaps
-        # ============================================================
-        zip_to_process = None
-        if not not_uploaded_wafermaps:
-            print("\nAll wafermaps are already UPLOADED.")
-        else:
-            zip_to_process = {w["zip_file"] for w in not_uploaded_wafermaps}
-
-            for zip_file in zip_to_process:
-                shutil.copy2(
-                    os.path.join(NAS_MAP_DIR, zip_file),
-                    os.path.join(TEMP_DL_DIR, zip_file),
-                )
-
-            print(f"\nProcessing {len(zip_to_process)} ZIPs containing {len(not_uploaded_wafermaps)} NOT_UPLOADED wafermaps...")
-
-           # ========================================================
-           # Step 5: Process only NOT_UPLOADED wafermaps
-           # ========================================================
-            for item_count, item in enumerate(not_uploaded_wafermaps, start=1):
-                zip_file = item["zip_file"]
-                txt_name = os.path.basename(item["txt_file"])
-                lot = item["lot"]
-                wafer = item["wafer"]
-                stage = item["stage"]
-
-                print(f"\n----- {item_count}/{len(not_uploaded_wafermaps)} -----")
-
-                zip_path = os.path.join(TEMP_DL_DIR, zip_file)
-                parts = zip_file.replace(".map.zip", "").split("_")
-                zip_timestamp = (
-                    datetime.strptime("_".join(parts[2:8]), "%Y_%m_%d_%H_%M_%S")
-                    .strftime("%Y-%m-%d %H:%M:%S")
-                    if len(parts) >= 8
-                    else ""
-                )
-
-                try:
-                    with zipfile.ZipFile(zip_path, "r") as zf:
-                        extract_dir = os.path.join(TEMP_DL_DIR, "extracted", lot, stage)
-                        os.makedirs(extract_dir, exist_ok=True)
-                        zf.extractall(extract_dir)
-
-                        for root_dir, _, files in os.walk(extract_dir):
-                            if txt_name not in files:
-                                continue
-
-                            txt_path = os.path.join(root_dir, txt_name)
-                            factory_info = get_factory_info(fr_session, lot, wafer, PRODUCT_TO_CHECK)
-
-                            umc_file = process_wafer(
-                                lot=lot,
-                                wafer=wafer,
-                                filename=txt_path,
-                                product=PRODUCT_TO_CHECK,
-                                stage=stage,
-                                zip_timestamp=zip_timestamp,
-                                factory_info=factory_info,
-                            )
-
-                            if umc_file:
-                                print("[MAIN] Generating files_upload_*.txt")
-                                upload_file_path = os.path.join(EXE_DIR, f"files_uploaded_{timestamp}.txt")
-                                print("[MAIN] Generating files_upload_*.txt", upload_file_path)
-                                with open(upload_file_path, "a", encoding="utf-8") as f:
-                                    f.write(os.path.basename(umc_file) + "\n")
-                                print(f"[MAIN] Done update {upload_file_path}")
-
-
-                            lots.append(lot)
-                           # ============================
-                           # FTP Upload using single connection
-                           # ============================
-                            print("[FTP] Starting FTP Upload...")
-                            if ftp.upload_and_verify(umc_file, max_retries=MAX_FTP_RETRIES):
-                                uploaded_wafers += 1
-                                print("[FTP] Successful FTP Upload...")
-                               # -------------------------
-                               # Update DB only if FTP succeeded
-                               # -------------------------
-                                success = upsert_upload(db_session, upload_table, PRODUCT_TO_CHECK, lot, wafer, stage)
-                                if success:
-                                    db_update_count += 1
-                                    print("[DB] Successful DB Upload...")
-                                else:
-                                    print(f"[WARN] Failed DB update for {lot} W{wafer} {stage}")
-                                    error_count += 1
-                                    sys.exit(1)
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    extract_dir = os.path.join(TEMP_DL_DIR, "extracted", lot, stage)
+                    os.makedirs(extract_dir, exist_ok=True)
+                    zf.extractall(extract_dir)
+                    for root_dir, _, files in os.walk(extract_dir):
+                        if txt_name not in files:
+                            continue
+                        txt_path = os.path.join(root_dir, txt_name)
+                        factory_info = get_factory_info(fr_session, lot, wafer, PRODUCT_TO_CHECK)
+                        umc_file = process_wafer(
+                            lot=lot,
+                            wafer=wafer,
+                            filename=txt_path,
+                            product=PRODUCT_TO_CHECK,
+                            stage=stage,
+                            zip_timestamp=zip_timestamp,
+                            factory_info=factory_info,
+                        )
+                        if umc_file:
+                            upload_file_path = os.path.join(EXE_DIR, f"files_uploaded_{timestamp}.txt")
+                            #print("[MAIN] Generating files_upload_*.txt", upload_file_path)
+                            with open(upload_file_path, "a", encoding="utf-8") as f:
+                                f.write(os.path.basename(umc_file) + "\n")
+                            #print(f"[MAIN] Done update {upload_file_path}")
+                        #lots = set()
+                        #lots.add(lot)
+                        lots.append(lot)
+                       # ============================
+                       # FTP Upload using single connection
+                       # ============================
+                        print("[FTP] Starting FTP Upload...")
+                        if ftp.upload_and_verify(umc_file, max_retries=MAX_FTP_RETRIES):
+                            uploaded_wafers += 1
+                            print("[FTP] Successful FTP Upload...")
+                           # -------------------------
+                           # Update DB only if FTP succeeded
+                           # -------------------------
+                            success = upsert_upload(db_session, upload_table, PRODUCT_TO_CHECK, lot, wafer, stage)
+                            if success:
+                                db_update_count += 1
+                                print("[DB] Successful DB Upload...")
                             else:
-                                print(f"[WARN] FTP upload failed for wafer {wafer}")
+                                print(f"[WARN] Failed DB update for {lot} W{wafer} {stage}")
                                 error_count += 1
                                 sys.exit(1)
-
-                except zipfile.BadZipFile:
-                    error_count += 1
-                    print("Bad ZIP file, skipping:", zip_file)
-                    sys.exit(1)
-
-    finally:
-        print("[FTP and DB] Closing all sessions...")
-        ftp.close()
-        db_session.close()
-        fr_session.close()
+                        else:
+                            print(f"[WARN] FTP upload failed for wafer {wafer}")
+                            error_count += 1
+                            sys.exit(1)
+            except zipfile.BadZipFile:
+                error_count += 1
+                print("Bad ZIP file, skipping:", zip_file)
+                sys.exit(1)
 
 
-    #remove Second Scan to speed up the process
+    #===============================
+    #    SECOND SCAN FOR HTML DIFF
+    #===============================
     if not_uploaded_count != 0:
         total_wafer = 0
         uploaded_count = 0
@@ -257,6 +267,14 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
                         break
                     total_wafer += 1
                     lot_prefix = lot.split(".")[0]
+
+                    where_clause = and_(
+                        upload_table.c.Product == product,
+                        upload_table.c.Lot_Number == lot_prefix,
+                        upload_table.c.Wafer_Id == int(wafer),
+                        upload_table.c.stage == stage,
+                    )
+
                     record = db_session.execute(
                         select(1).where(where_clause)
                     ).first()
@@ -342,11 +360,15 @@ def run_main(selected_products):
     fr_session = create_factory_session()
     ftp = FTPClient(FTP_BASE_URL)  # ONE FTP connection
 
+    unsupported_log_path = os.path.join(EXE_DIR, "unsupported_device.log")
+    if os.path.exists(unsupported_log_path):
+        os.remove(unsupported_log_path)
+
     try:
         for product in selected_products:
             try:
                 print(f"\n[INFO] Processing product: {product}")
-                run_main_for_product(product, ftp, db_session, fr_session)
+                run_main_for_product(product, ftp, db_session, fr_session, unsupported_log_path)
             except Exception as e:
                 print(f"[ERROR] Failed processing {product}: {e}")
     finally:
@@ -354,6 +376,9 @@ def run_main(selected_products):
         db_session.close()
         fr_session.close()
         print("[ALL DONE] All products processed")
+        cleanup_duplicate(unsupported_log_path)
+
+
 
 if __name__ == "__main__":
     product_arg = sys.argv[1] if len(sys.argv) > 1 else ""
