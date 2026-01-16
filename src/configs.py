@@ -34,7 +34,7 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
 # -------------------------
 PRODUCT_TO_CHECK = []
 #PRODUCT_TO_CHECK = ""
-PRODUCT_TO_CHECK.append("FT1234-X")     #Test Product
+#PRODUCT_TO_CHECK.append("FT1234-X")     #Test Product
 #Greatek Products
 PRODUCT_TO_CHECK.append("FT4232H-C")    #FT4232H REVC DIE-AP
 PRODUCT_TO_CHECK.append("FT233H-B")     #FT233H REVB DIE-AP

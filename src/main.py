@@ -212,9 +212,9 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
                             with open(upload_file_path, "a", encoding="utf-8") as f:
                                 f.write(os.path.basename(umc_file) + "\n")
                             #print(f"[MAIN] Done update {upload_file_path}")
-                        lots = set()
-                        lots.add(lot)
-                        #lots.append(lot)
+                        #lots = set()
+                        #lots.add(lot)
+                        lots.append(lot)
                        # ============================
                        # FTP Upload using single connection
                        # ============================
