@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import csv
 import sys
+from utils import parse_soft_bins
 
 load_dotenv()
 
@@ -33,7 +34,7 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
 # -------------------------
 PRODUCT_TO_CHECK = []
 #PRODUCT_TO_CHECK = ""
-#PRODUCT_TO_CHECK.append("FT1234-X")   #Test Product
+PRODUCT_TO_CHECK.append("FT1234-X")     #Test Product
 #Greatek Products
 PRODUCT_TO_CHECK.append("FT4232H-C")    #FT4232H REVC DIE-AP
 PRODUCT_TO_CHECK.append("FT233H-B")     #FT233H REVB DIE-AP
@@ -62,13 +63,13 @@ if IS_PRODUCTION_MODE:
 elif IS_TEST_DEBUG_MODE:
     ROOT_DIR = os.path.join(EXE_DIR, "converted_umc")
 
-#Path for the raw wafer map to be converted
-#NAS_MAP_DIR = r"M:\DOWNLOADED\CR_Micro\PROBE\MAP"      # REFERENCE contains wafermap from the OSAT
-if IS_PRODUCTION_MODE:
-    NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
-elif IS_TEST_DEBUG_MODE:
-    #NAS_MAP_DIR = os.path.join(EXE_DIR, "raw_wafer_map")     # TEST Environment
-    NAS_MAP_DIR = r"Z:\test_logfiles\DOWNLOADED\GREATEK\MAP"  # TEST Environment
+##Path for the raw wafer map to be converted
+##NAS_MAP_DIR = r"M:\DOWNLOADED\CR_Micro\PROBE\MAP"      # REFERENCE contains wafermap from the OSAT
+#if IS_PRODUCTION_MODE:
+#    NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
+#elif IS_TEST_DEBUG_MODE:
+#    #NAS_MAP_DIR = os.path.join(EXE_DIR, "raw_wafer_map")     # TEST Environment
+#    NAS_MAP_DIR = r"Z:\test_logfiles\DOWNLOADED\GREATEK\MAP"  # TEST Environment
 
 
 #Temporary path for processing the files
@@ -109,6 +110,31 @@ if IS_PRODUCTION_MODE:
 elif IS_TEST_DEBUG_MODE:
     FTP_BASE_URL = "ftp://tftdi@ftp1.umc.com/CP_S_UMC/test_dir_geoff" # TEST Environment
 
+# -------------------------
+# Set NAS Directory based from  Product Configs in CSV
+# -------------------------
+def set_nas_dir(subcon):
+    NAS_MAP_DIR = "NA"
+    if IS_PRODUCTION_MODE:
+        if subcon == "GREATEK TAIWAN":
+            NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"  # PRODUCTION
+        elif subcon == "ASE TAIWAN":
+            NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"
+        else:
+            print("Unknown subcon")
+            sys.exit(1)
+    elif IS_TEST_DEBUG_MODE:
+        if subcon == "GREATEK TAIWAN":
+            #NAS_MAP_DIR = os.path.join(EXE_DIR, "GTK_raw_wafer_map")  # TEST Environment
+            NAS_MAP_DIR = r"Z:\test_logfiles\DOWNLOADED\GREATEK\MAP"  # Locally Map production
+        elif subcon == "ASE TAIWAN":
+            NAS_MAP_DIR = os.path.join(EXE_DIR, "ASE_raw_wafer_map")  # TEST Environment
+
+    print(f"Directory  is set to {NAS_MAP_DIR}")
+
+
+    return NAS_MAP_DIR
+
 
 # -------------------------
 # Load Product Configs from CSV
@@ -116,17 +142,7 @@ elif IS_TEST_DEBUG_MODE:
 
 PRODUCT_CSV = os.path.join(BASE_DIR, "product_config.csv")
 
-def parse_soft_bins(soft_bin_str):
-    """
-    Convert CSV string to list of tuples [(0,"[]"), ...]
-    """
-    bins = []
-    for line in soft_bin_str.strip().splitlines():
-        if not line.strip():
-            continue
-        idx, desc = line.split(":", 1)
-        bins.append((int(idx.strip()), desc.strip().strip('"')))
-    return bins
+
 
 if PRODUCT_TO_CHECK:
     # Normalize PRODUCT_TO_CHECK to a set
@@ -149,13 +165,18 @@ if PRODUCTS_TO_LOAD:
         for row in reader:
             product = row["PRODUCT"].strip()
 
+
             #  Skip products not requested
             if product not in PRODUCTS_TO_LOAD:
                 continue
 
-            device = row["DEVICE_NAME"].strip()
+            device_names = row["DEVICE_NAME"].split("|")
+            for device in device_names:
+                device = device.strip()
 
-            PRODUCT_CONFIG["_device_to_product"][device] = product
+            #device = row["DEVICE_NAME"].strip()
+                if device:
+                    PRODUCT_CONFIG["_device_to_product"][device] = product
 
             PRODUCT_CONFIG[product] = {
                 "subcon": row["SUBCON"].strip(),

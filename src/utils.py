@@ -5,6 +5,7 @@ import shutil
 import sys
 import difflib
 from html import escape
+import time
 
 if getattr(sys, 'frozen', False):
     # Running from PyInstaller EXE
@@ -156,3 +157,62 @@ def parse_soft_bins(soft_bin_str):
         idx, desc = line.split(":", 1)
         bins.append((int(idx.strip()), desc.strip().strip('"')))
     return bins
+
+##
+def cleanup_duplicate(log_path):
+#log_path = "unsupported_device.log"
+
+    seen = set()
+    unique_lines = []
+
+    with open(log_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line not in seen:
+                seen.add(line)
+                unique_lines.append(line)
+
+    with open(log_path, "w", encoding="utf-8") as f:
+        for line in unique_lines:
+            f.write(line + "\n")
+
+    print("[LOG] Duplicates removed")
+
+
+# -----------------------------
+# Safe copy function
+# -----------------------------
+def safe_copy(src, dst, retries=5):
+    """Copy a file safely, creating destination folders if needed."""
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    for attempt in range(1, retries + 1):
+        try:
+            shutil.copy2(src, dst)
+            return True
+        except (PermissionError, FileNotFoundError):
+            if attempt == retries:
+                raise
+            time.sleep(attempt)  # simple backoff
+
+
+# -----------------------------
+# Your wait_until_stable function
+# -----------------------------
+def wait_until_stable(path, checks=3, delay=1):
+    """
+    Wait until file size stops changing.
+    Returns True if file is stable, False otherwise.
+    """
+    last_size = -1
+    for _ in range(checks):
+        try:
+            size = os.path.getsize(path)
+        except FileNotFoundError:
+            return False
+        if size == last_size:
+            return True
+        last_size = size
+        time.sleep(delay)
+    return False
