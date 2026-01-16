@@ -17,7 +17,7 @@ else:
 
 #script details
 author = "Juneth Viktor Ellon Moreno"
-script_ver = "1"
+script_ver = "1.1"
 
 
 #Debug option
@@ -34,9 +34,22 @@ if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
 PRODUCT_TO_CHECK = []
 #PRODUCT_TO_CHECK = ""
 #PRODUCT_TO_CHECK.append("FT1234-X")   #Test Product
-PRODUCT_TO_CHECK.append("FT4232H-C")  #Reference Product
-PRODUCT_TO_CHECK.append("FT233H-B")   #Target1
-PRODUCT_TO_CHECK.append("FT260-B")    #Target2
+#Greatek Products
+PRODUCT_TO_CHECK.append("FT4232H-C")    #FT4232H REVC DIE-AP
+PRODUCT_TO_CHECK.append("FT233H-B")     #FT233H REVB DIE-AP
+PRODUCT_TO_CHECK.append("FT260-B")      #FT260_REVB DIE-AP
+PRODUCT_TO_CHECK.append("FT4233H-C")    #FT4233H REVC DIE-AP|FT4233H REVC DIE-AP~S
+PRODUCT_TO_CHECK.append("FT232RV2-C")   #FT232R V2 REVC DIE-AP_TW02
+#Greatek Products ( NOT USED )
+#PRODUCT_TO_CHECK.append("FT232R-D")     # 8-FT232R-D DIE-AP_TW02|8-FT232R-D WFR-AP
+#PRODUCT_TO_CHECK.append("FT120-C")      # FT120_REVC DIE-AP
+#PRODUCT_TO_CHECK.append("FT201X")       # FT201X DIE_A01~CP3 (ENGG)
+#PRODUCT_TO_CHECK.append("FT232EX-D")    # FT232EX_REVD	DIE-AP|FT232EX_REVD	WFR-AP
+#PRODUCT_TO_CHECK.append("FT232H-C")     # FT232H_REVC DIE-AP
+#PRODUCT_TO_CHECK.append("FT232RV2-B2")  # FT232R V2 REVB2 (not enabled)
+#PRODUCT_TO_CHECK.append("FT233H-B")     # FT233H REVB DIE-AP~ENG1
+#PRODUCT_TO_CHECK.append("FT4222H")      # FT4222H DIE-AP|FT4222H WFR-AP|FT4222H DIE_A01~CP4
+#PRODUCT_TO_CHECK.append("VNC2-B")       # VNC2_REVB DIE-AP|VNC2_REVB WFR-AP
 
 
 # -------------------------
@@ -54,8 +67,8 @@ elif IS_TEST_DEBUG_MODE:
 if IS_PRODUCTION_MODE:
     NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"            # PRODUCTION
 elif IS_TEST_DEBUG_MODE:
-    NAS_MAP_DIR = os.path.join(EXE_DIR, "raw_wafer_map")# TEST Environment
-    #NAS_MAP_DIR = r"Z:\test_logfiles\DOWNLOADED\GREATEK\MAP"  # TEST Environment
+    #NAS_MAP_DIR = os.path.join(EXE_DIR, "raw_wafer_map")     # TEST Environment
+    NAS_MAP_DIR = r"Z:\test_logfiles\DOWNLOADED\GREATEK\MAP"  # TEST Environment
 
 
 #Temporary path for processing the files

@@ -37,12 +37,14 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session):
     # ============================================================
     # Step 1: Clean working directories
     # ============================================================
-    if IS_TEST_DEBUG_MODE:
-        for dir_to_clean in [TEMP_DL_DIR, ROOT_DIR]:
-            if os.path.exists(dir_to_clean):
+
+    for dir_to_clean in [TEMP_DL_DIR, ROOT_DIR]:
+        if os.path.exists(dir_to_clean):
+            if IS_TEST_DEBUG_MODE:
                 print(f"[CLEANUP] Removing old files in {dir_to_clean}")
                 shutil.rmtree(dir_to_clean)
-            os.makedirs(dir_to_clean, exist_ok=True)
+            else:
+                os.makedirs(dir_to_clean, exist_ok=True)
 
     # ============================================================
     # Step 2: Scan NAS ZIPs
