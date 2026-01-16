@@ -119,7 +119,7 @@ def set_nas_dir(subcon):
         if subcon == "GREATEK TAIWAN":
             NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"  # PRODUCTION
         elif subcon == "ASE TAIWAN":
-            NAS_MAP_DIR = r"M:\DOWNLOADED\GREATEK\MAP"
+            NAS_MAP_DIR = r"M:\DOWNLOADED\ASE"  #NEED TO PUT CORRECT PATH
         else:
             print("Unknown subcon")
             sys.exit(1)
