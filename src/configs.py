@@ -18,12 +18,12 @@ else:
 
 #script details
 author = "Juneth Viktor Ellon Moreno"
-script_ver = "1.1"
+script_ver = "1.2"
 
 
 #Debug option
-IS_TEST_DEBUG_MODE = False      #Enable only during Test
-IS_PRODUCTION_MODE = True     #Enable only for Production Release (Will work only in actual Machine)
+IS_TEST_DEBUG_MODE = True      #Enable only during Test
+IS_PRODUCTION_MODE = False     #Enable only for Production Release (Will work only in actual Machine)
 
 if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
     print("Wrong Debug Mode")
@@ -51,6 +51,10 @@ PRODUCT_TO_CHECK.append("FT232RV2-C")   #FT232R V2 REVC DIE-AP_TW02
 #PRODUCT_TO_CHECK.append("FT233H-B")     # FT233H REVB DIE-AP~ENG1
 #PRODUCT_TO_CHECK.append("FT4222H")      # FT4222H DIE-AP|FT4222H WFR-AP|FT4222H DIE_A01~CP4
 #PRODUCT_TO_CHECK.append("VNC2-B")       # VNC2_REVB DIE-AP|VNC2_REVB WFR-AP
+#ASE Products
+PRODUCT_TO_CHECK.append("FT4232HA")      #FT4232HA DIE-AP
+PRODUCT_TO_CHECK.append("FT4232HAN")     #FT4232HAN DIE-AP
+
 
 
 # -------------------------

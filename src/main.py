@@ -1,6 +1,6 @@
 # main.py
 import os
-import shutil
+import shutil, stat
 import zipfile
 import sys
 from datetime import datetime
@@ -15,14 +15,25 @@ from db import (
     upload_table
 )
 from scanner import scan_maps
-from umc_writer import process_wafer
+from umc_writer import process_wafer_GTK, process_wafer_ASE
 from ftp_client import FTPClient, MAX_FTP_RETRIES
 from utils import html_diff, EXE_DIR, cleanup_duplicate, safe_copy, wait_until_stable
 from mailer import send_completion_mail
 
+enable_email = False #True in Production
+enable_ftp  = False #True in Production
+
 if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
     print("Wrong Debug Mode")
     sys.exit(1)
+
+def remove_readonly_or_retry(func, path, _):
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except Exception:
+        # You can add retry logic here if needed
+        raise
 
 
 def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsupported_log_path):
@@ -41,7 +52,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
         if os.path.exists(dir_to_clean):
             if IS_TEST_DEBUG_MODE:
                 print(f"[CLEANUP] Removing old files in {dir_to_clean}")
-                shutil.rmtree(dir_to_clean)
+                shutil.rmtree(dir_to_clean, onerror=remove_readonly_or_retry)
         else:
             print(f"Creating {dir_to_clean}")
             os.makedirs(dir_to_clean, exist_ok=True)
@@ -68,6 +79,11 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
     # -------------------------
     product_info = PRODUCT_CONFIG.get(PRODUCT_TO_CHECK)
     test_factory = product_info.get("subcon")
+    if test_factory == "GREATEK TAIWAN":
+        subcon = "GTK"
+    else:
+        subcon = "ASE"
+
     NAS_MAP_DIR = set_nas_dir(test_factory)
 
 
@@ -79,7 +95,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
         zip_path = os.path.join(NAS_MAP_DIR, zip_file)
         try:
             print("Scanning files from zip:", zip_file)
-            for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path, unsupported_log_path): #Every Wafer Map
+            for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path, unsupported_log_path, subcon): #Every Wafer Map
                 if os.path.basename(zip_path_inner) != zip_file:
                     continue
                 if product != PRODUCT_TO_CHECK:
@@ -197,15 +213,27 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
                             continue
                         txt_path = os.path.join(root_dir, txt_name)
                         factory_info = get_factory_info(fr_session, lot, wafer, PRODUCT_TO_CHECK)
-                        umc_file = process_wafer(
-                            lot=lot,
-                            wafer=wafer,
-                            filename=txt_path,
-                            product=PRODUCT_TO_CHECK,
-                            stage=stage,
-                            zip_timestamp=zip_timestamp,
-                            factory_info=factory_info,
-                        )
+                        if subcon == "GTK":
+                            umc_file = process_wafer_GTK(
+                                lot=lot,
+                                wafer=wafer,
+                                filename=txt_path,
+                                product=PRODUCT_TO_CHECK,
+                                stage=stage,
+                                zip_timestamp=zip_timestamp,
+                                factory_info=factory_info,
+                            )
+                        else: #ASE
+                            umc_file = process_wafer_ASE(
+                                lot=lot,
+                                wafer=wafer,
+                                filename=txt_path,
+                                product=PRODUCT_TO_CHECK,
+                                stage=stage,
+                                zip_timestamp=zip_timestamp,
+                                factory_info=factory_info,
+                            )
+
                         if umc_file:
                             upload_file_path = os.path.join(EXE_DIR, f"files_uploaded_{timestamp}.txt")
                             #print("[MAIN] Generating files_upload_*.txt", upload_file_path)
@@ -215,28 +243,29 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
                         #lots = set()
                         #lots.add(lot)
                         lots.append(lot)
-                       # ============================
-                       # FTP Upload using single connection
-                       # ============================
-                        print("[FTP] Starting FTP Upload...")
-                        if ftp.upload_and_verify(umc_file, max_retries=MAX_FTP_RETRIES):
-                            uploaded_wafers += 1
-                            print("[FTP] Successful FTP Upload...")
-                           # -------------------------
-                           # Update DB only if FTP succeeded
-                           # -------------------------
-                            success = upsert_upload(db_session, upload_table, PRODUCT_TO_CHECK, lot, wafer, stage)
-                            if success:
-                                db_update_count += 1
-                                print("[DB] Successful DB Upload...")
+                        if enable_ftp == True:
+                            # ============================
+                            # FTP Upload using single connection
+                            # ============================
+                            print("[FTP] Starting FTP Upload...")
+                            if ftp.upload_and_verify(umc_file, max_retries=MAX_FTP_RETRIES):
+                                uploaded_wafers += 1
+                                print("[FTP] Successful FTP Upload...")
+                               # -------------------------
+                               # Update DB only if FTP succeeded
+                               # -------------------------
+                                success = upsert_upload(db_session, upload_table, PRODUCT_TO_CHECK, lot, wafer, stage)
+                                if success:
+                                    db_update_count += 1
+                                    print("[DB] Successful DB Upload...")
+                                else:
+                                    print(f"[WARN] Failed DB update for {lot} W{wafer} {stage}")
+                                    error_count += 1
+                                    sys.exit(1)
                             else:
-                                print(f"[WARN] Failed DB update for {lot} W{wafer} {stage}")
+                                print(f"[WARN] FTP upload failed for wafer {wafer}")
                                 error_count += 1
                                 sys.exit(1)
-                        else:
-                            print(f"[WARN] FTP upload failed for wafer {wafer}")
-                            error_count += 1
-                            sys.exit(1)
             except zipfile.BadZipFile:
                 error_count += 1
                 print("Bad ZIP file, skipping:", zip_file)
@@ -324,21 +353,22 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
         first_scan_line.clear()
         second_scan_line.clear()
 
-    # ============================================================
-    # Step 4: Send email
-    # ============================================================
-    print("[MAIL] Sending mail...")
-    send_completion_mail(
-        product=PRODUCT_TO_CHECK,
-        lots=lots,
-        total_wafers=len(not_uploaded_wafermaps),
-        uploaded_wafers=uploaded_wafers,
-        db_update_count=db_update_count,
-        ftp_dir=FTP_BASE_URL,
-        error=error_count,
-        has_attach=len(not_uploaded_wafermaps) != 0,
-        attachments = [diff_file_path,upload_file_path],
-    )
+    if enable_email == True:
+        # ============================================================
+        # Step 4: Send email
+        # ============================================================
+        print("[MAIL] Sending mail...")
+        send_completion_mail(
+            product=PRODUCT_TO_CHECK,
+            lots=lots,
+            total_wafers=len(not_uploaded_wafermaps),
+            uploaded_wafers=uploaded_wafers,
+            db_update_count=db_update_count,
+            ftp_dir=FTP_BASE_URL,
+            error=error_count,
+            has_attach=len(not_uploaded_wafermaps) != 0,
+            attachments = [diff_file_path,upload_file_path],
+        )
 
     not_uploaded_wafermaps.clear()
     lots.clear()

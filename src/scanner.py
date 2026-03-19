@@ -9,22 +9,26 @@ DEVICE_TO_PRODUCT = PRODUCT_CONFIG["_device_to_product"]
 # Map wafer DEVICE_NAME to product
 # -------------------------
 
-def extract_wafer_from_filename(filename: str, lot_prefix: str):
+def extract_wafer_from_filename(filename: str, subcon):
     """
-    filename: DKWJ301-A5.txt
+    filename: DKWJ301-A5.txt #GTK
     lot_prefix: DKWJ3
+
+     filename: QTGAQ-CP1T0-CJ23016700-16.txt #ASE
+    lot_prefix: QTGAQ
 
     returns:
       wafer_str -> '01'
       wafer_id  -> 1
     """
-    name = os.path.splitext(filename)[0]   # DKWJ301-A5
-    before_dash = name.split("-")[0]        # DKWJ301
+    name = os.path.splitext(filename)[0]   # DKWJ301-A5 or QTGAQ-CP1T0-CJ23016700-16
+    if subcon == "GTK":
+        lotid = name.split("-")[0]        # DKWJ301
+        wafer_digits = lotid[:2]  # '01'
 
-    if not before_dash.startswith(lot_prefix):
-        raise ValueError(f"[SCANNER] {filename} does not start with lot prefix {lot_prefix}")
+    else: #ASE
+        wafer_digits = name.split("-")[-1]   #16
 
-    wafer_digits = before_dash[len(lot_prefix):]  # '01'
     wafer_id = int(wafer_digits)
     wafer_str = f"{wafer_id:02d}"
 
@@ -36,18 +40,26 @@ def extract_lot_from_zip(zip_name):
     LOT rules:
     - Take substring before first '_'
     - If it contains '.', take substring before '.'
+    zip filename = DKJR5.1_CP1_2021_08_23_08_34_47.map #GTK
+                   QTGAQ_CP1_2025_7_9_10_10_00.map     #ASE
     """
     base = os.path.basename(zip_name)
-    lot_part = base.split("_", 1)[0]
+
+    lot_part = base.split("_", 1)[0]  #DKJR5.1 or QTGAQ
     lot = lot_part.split(".", 1)[0]
+
     return lot
 
 
 def extract_stage_from_zip(zip_name):
     """
     Stage is CP1 or CP2 token in filename.
+    zip filename = DKJR5.1_CP1_2021_08_23_08_34_47.map #GTK
+                   QTGAQ_CP1_2025_7_9_10_10_00.map     #ASE
     """
+
     tokens = zip_name.upper().split("_")
+
     for t in tokens:
         if t in ("CP1", "CP2"):
             return t
@@ -57,7 +69,8 @@ def extract_stage_from_zip(zip_name):
 def extract_wafer_from_txt(wafer_id):
     """
     Example:
-        WAFER_ID=QT5KA03-1 → wafer = 3
+        WAFER_ID=QT5KA03-1 → wafer = 3 #GTK
+        WAFER_ID=                      #ASE
     """
     if not wafer_id:
         return None
@@ -68,7 +81,7 @@ def extract_wafer_from_txt(wafer_id):
     return wafer_part
 
 
-def scan_maps(zip_path, unsupported_log = None):
+def scan_maps(zip_path, unsupported_log = None, subcon ="GTK"):
     """
     Scan a single ZIP file.
 
@@ -99,12 +112,17 @@ def scan_maps(zip_path, unsupported_log = None):
                 with zf.open(info) as f:
                     lines = f.read().decode("utf-8", errors="ignore").splitlines()
                 txt = {}
-                for line in lines:
-                    if "=" in line:
-                        k, v = line.split("=", 1)
-                        txt[k.strip()] = v.strip()
-                device_name = txt.get("DEVICE_NAME")
-                wafer_id = txt.get("WAFER_ID")
+                if subcon == "GTK":
+                    for line in lines:
+                        if "=" in line:
+                            k, v = line.split("=", 1)
+                            txt[k.strip()] = v.strip()
+                    device_name = txt.get("DEVICE_NAME")
+                    wafer_id = txt.get("WAFER_ID")
+                else: #ASE
+                    for line in lines:
+                        if "Device Name" in line:
+                            device_name = line.split(":")[-1].strip(" ")
                 # -------------------------
                 # Map device to product
                 # -------------------------
@@ -116,7 +134,10 @@ def scan_maps(zip_path, unsupported_log = None):
                 # -------------------------
                 # Wafer number
                 # -------------------------
-                wafer = extract_wafer_from_txt(wafer_id)
+                if subcon == "GTK":
+                    wafer = extract_wafer_from_txt(wafer_id)
+                else: #ASE
+                    wafer_str,wafer = extract_wafer_from_filename(info.filename,"ASE")
                 if wafer is None:
                     continue
                 yield (
