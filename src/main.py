@@ -20,8 +20,8 @@ from ftp_client import FTPClient, MAX_FTP_RETRIES
 from utils import html_diff, EXE_DIR, cleanup_duplicate, safe_copy, wait_until_stable
 from mailer import send_completion_mail
 
-enable_email = False #True in Production
-enable_ftp  = False #True in Production
+enable_email = True #True in Production
+enable_ftp  = True #True in Production
 
 if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
     print("Wrong Debug Mode")
@@ -281,6 +281,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
         not_uploaded_count = 0
         second_scan_line=[]
 
+
         print("[SCAN] Scanning the 2nd time...")
         for zip_file in os.listdir(NAS_MAP_DIR):
             if not zip_file.lower().endswith(".zip"):
@@ -289,7 +290,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
             zip_path = os.path.join(NAS_MAP_DIR, zip_file)
 
             try:
-                for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path):
+                for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path,subcon):
                     if os.path.basename(zip_path_inner) != zip_file:
                         continue
                     if product != PRODUCT_TO_CHECK:
@@ -313,14 +314,14 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
                     else:
                         not_uploaded_count += 1
                         status = "NOT_UPLOADED"
-                        not_uploaded_wafermaps.append({
-                            "zip_file": zip_file,
-                            "txt_file": txt_file,
-                            "lot": lot_prefix,
-                            "wafer": wafer,
-                            "stage": stage,
-                            "product": product,
-                        })
+                        #not_uploaded_wafermaps.append({
+                        #    "zip_file": zip_file,
+                        #    "txt_file": txt_file,
+                        #    "lot": lot_prefix,
+                        #    "wafer": wafer,
+                        #    "stage": stage,
+                        #    "product": product,
+                        #})
                     wafer_results_tbl = f"{PRODUCT_TO_CHECK} | Lot={lot} | W{wafer} | {stage} | {status}"
                     second_scan_line.append(wafer_results_tbl)
             except zipfile.BadZipFile:
@@ -361,7 +362,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
         send_completion_mail(
             product=PRODUCT_TO_CHECK,
             lots=lots,
-            total_wafers=len(not_uploaded_wafermaps),
+            total_wafers=total_wafer,
             uploaded_wafers=uploaded_wafers,
             db_update_count=db_update_count,
             ftp_dir=FTP_BASE_URL,

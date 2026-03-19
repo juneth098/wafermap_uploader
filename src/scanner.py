@@ -81,7 +81,7 @@ def extract_wafer_from_txt(wafer_id):
     return wafer_part
 
 
-def scan_maps(zip_path, unsupported_log = None, subcon ="GTK"):
+def scan_maps(zip_path, unsupported_log = None, subcon =""):
     """
     Scan a single ZIP file.
 

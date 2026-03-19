@@ -161,24 +161,27 @@ def parse_soft_bins(soft_bin_str):
 ##
 def cleanup_duplicate(log_path):
 #log_path = "unsupported_device.log"
+    if os.path.exists(log_path):
+        seen = set()
+        unique_lines = []
 
-    seen = set()
-    unique_lines = []
+        with open(log_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                if line not in seen:
+                    seen.add(line)
+                    unique_lines.append(line)
 
-    with open(log_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            if line not in seen:
-                seen.add(line)
-                unique_lines.append(line)
+        with open(log_path, "w", encoding="utf-8") as f:
+            for line in unique_lines:
+                f.write(line + "\n")
 
-    with open(log_path, "w", encoding="utf-8") as f:
-        for line in unique_lines:
-            f.write(line + "\n")
+        print("[LOG] Duplicates removed")
+    else:
+        print("[LOG] No duplicates found")
 
-    print("[LOG] Duplicates removed")
 
 
 # -----------------------------
