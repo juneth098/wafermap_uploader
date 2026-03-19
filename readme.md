@@ -27,6 +27,8 @@ This tool simplifies wafer map processing and automates upload workflows for sem
 - FT260-B   
 - FT4233H-C  
 - FT232RV2-C
+- FT4232HA
+- FT4232HAN
 
 ---
 
