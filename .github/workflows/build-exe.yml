@@ -18,7 +18,7 @@ jobs:
 
       - name: Package EXE + CSV
         run: |
-          zip -j WaferMapUploader.zip WafermapUploader.exe src/product_config.csv
+          zip -j WaferMapUploader.zip WafermapUploader.exe
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

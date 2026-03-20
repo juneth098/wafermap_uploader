@@ -40,7 +40,6 @@ The latest Zip can be downloaded from the **GitHub Releases** page:
 
 ````
 WaferMapUploader.zip
-├── product_config.csv          # Contains different Product configuration
 └── WafermapUploader.exe        # Executable file
 `````
 
@@ -53,7 +52,7 @@ WaferMapUploader.zip
 
 ### Using the EXE
 
-1. **Download  the zip file**
+1. **Download  and extract the zip file**
 2. Create .env file containing FTP and DB access:
    - check with Admin for credentials
    
