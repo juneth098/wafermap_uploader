@@ -18,7 +18,7 @@ else:
 
 #script details
 author = "Juneth Viktor Ellon Moreno"
-script_ver = "1.2"
+script_ver = "1.3"
 
 
 #Debug option
