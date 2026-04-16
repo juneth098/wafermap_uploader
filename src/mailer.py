@@ -68,7 +68,7 @@ def send_completion_mail(
         </html>
         """
 
-    if error !=0: #error found
+    if error !=0 or uploaded_wafers !=db_update_count: #error found
         mail.Subject = f"UMC Wafermap Upload FAIL | {product}"
         mail.HTMLBody = f"""
         <html>
@@ -85,13 +85,13 @@ def send_completion_mail(
         <tr><td><b>Upload Agent</b></td><td>:</td><td>wmu_v{script_ver}</td></tr>
         <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
         </table>
-
+        <p>Might be problem in FTP or DB upload.</p>
         <p>This is an automated message.</p>
         </body>
         </html>
         """
 
-    if total_wafers ==0: #0 wafers
+    if total_wafers ==0 or uploaded_wafers==0: #0 wafers
         mail.Subject = f"UMC Wafermap: Nothing to upload | {product}"
         mail.HTMLBody = f"""
         <html>
@@ -108,7 +108,7 @@ def send_completion_mail(
         <tr><td><b>Upload Agent</b></td><td>:</td><td>wmu_v{script_ver}</td></tr>
         <tr><td><b>Timestamp</b></td><td>:</td><td>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</td></tr>
         </table>
-
+        <p>No wafer found or all maps are already uploaded.</p>
         <p>This is an automated message.</p>
         </body>
         </html>

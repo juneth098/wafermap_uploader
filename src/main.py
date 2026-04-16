@@ -290,7 +290,7 @@ def run_main_for_product(PRODUCT_TO_CHECK, ftp, db_session, fr_session, unsuppor
             zip_path = os.path.join(NAS_MAP_DIR, zip_file)
 
             try:
-                for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path,subcon):
+                for zip_path_inner, txt_file, lot, wafer, stage, product in scan_maps(zip_path, unsupported_log_path,subcon):
                     if os.path.basename(zip_path_inner) != zip_file:
                         continue
                     if product != PRODUCT_TO_CHECK:

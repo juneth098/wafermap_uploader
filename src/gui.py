@@ -9,6 +9,37 @@ import main
 import configs
 import sys
 from configs import PRODUCT_CSV, IS_PRODUCTION_MODE, IS_TEST_DEBUG_MODE
+from utils import EXE_DIR
+
+# -------------------------
+# Logging (console + file)
+# -------------------------
+from datetime import datetime
+
+log_filename = f"log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+log_path = os.path.join(EXE_DIR, log_filename)
+
+class Tee:
+    def __init__(self, *files):
+        self.files = files
+
+    def write(self, obj):
+        for f in self.files:
+            f.write(obj)
+            f.flush()
+
+    def flush(self):
+        for f in self.files:
+            f.flush()
+
+# Open log file
+log_file = open(log_path, "w", encoding="utf-8")
+
+# Redirect stdout & stderr
+sys.stdout = Tee(sys.stdout, log_file)
+sys.stderr = Tee(sys.stderr, log_file)
+
+print(f"[LOG] Logging to: {log_path}")
 
 if IS_PRODUCTION_MODE == IS_TEST_DEBUG_MODE:
     print("Wrong Debug Mode")
